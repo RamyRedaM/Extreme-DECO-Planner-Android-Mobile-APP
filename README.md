@@ -1,148 +1,159 @@
+<p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Extreme DECO Planner icon" width="120">
+</p>
 
+<h1 align="center">Extreme DECO Planner</h1>
+
+<p align="center">
+  <strong>A technical scuba diving decompression planner for Android.</strong><br>
+  Bühlmann ZHL-16A / B / C with Gradient Factors, Best Gas Mix selection, CCR with bailout, multi-dive days, interactive charts and PDF / CSV export. Everything runs on the phone, offline.
+</p>
+
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white">
+  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white">
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
+  <img alt="Version" src="https://img.shields.io/badge/version-1.27.2-0891B2">
+  <img alt="Status" src="https://img.shields.io/badge/status-beta-FACC15">
+</p>
+
+---
 
 > [!WARNING]
-> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this tool.** TEC DECO PLANNER is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Always cross-check plans with a second independent planner and carry backup tables. You use this software entirely at your own risk.
+> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this app.** Extreme DECO Planner is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Dive within your training limits, cross-check every plan with a second independent planner, and carry backup tables. You use this software entirely at your own risk.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Download](#download)
 - [Features](#features)
-- [Screenshots](#screenshots)
-- [Quick Start](#quick-start)
+- [App Screens](#app-screens)
 - [How to Plan a Dive](#how-to-plan-a-dive)
 - [Decompression Models](#decompression-models)
-- [Gas Selection: Best Mix](#gas-selection-best-mix)
-- [Safety Checks and Alerts](#safety-checks-and-alerts)
-- [Tech Stack and Architecture](#tech-stack-and-architecture)
+- [Best Gas Mix](#best-gas-mix)
+- [Safety Checks](#safety-checks)
+- [Build from Source](#build-from-source)
+- [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Engine API](#engine-api)
 - [Testing and Validation](#testing-and-validation)
-- [Configuration Reference](#configuration-reference)
+- [Default Settings](#default-settings)
+- [Known Limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [References](#references)
+- [Contact](#contact)
 - [License](#license)
 
 ---
 
 ## Overview
 
-TEC DECO PLANNER helps technical divers plan open circuit and closed circuit (CCR) decompression dives. You enter the depth, bottom time, gases and your personal limits. The planner then:
+Extreme DECO Planner helps technical divers plan open circuit and closed circuit (CCR) decompression dives on an Android phone. You set the depth, bottom time, gases and your limits, and the app:
 
-1. Recommends the **best bottom mix, travel gas and deco gases** for the depth.
+1. Recommends the **best bottom, travel and deco gases** for the depth, with cylinder sizes.
 2. Builds a full **decompression schedule** with the model you choose.
-3. Reports **runtime, CNS %, OTU, END, gas density, gas volumes** and every warning.
-4. Draws **charts** of the dive profile, partial pressures, tissue loading and gas use.
-5. Generates **contingency plans** (deeper, longer, lost deco gas, CCR bailout).
+3. Reports **runtime, stops, CNS %, OTU, END, gas density and gas volumes**.
+4. Draws **charts** of the profile, partial pressures, tissue loading and gas use.
+5. Plans **multi-dive days**, carrying residual nitrogen and helium from dive to dive.
+6. Generates **contingency plans** and a **CCR bailout** plan.
+7. Exports the plan as a **PDF dive slate** or **CSV**, ready to share.
 
-Everything is calculated client-side. No account, no server, no data leaves your device.
+No account, no server and no internet connection are needed. Your settings and saved plans stay on your device.
+
+---
+
+## Download
+
+The signed `.apk` will be attached to [GitHub Releases](../../releases) soon, and the app will be published on Google Play later.
+
+Until then, you can [build it from source](#build-from-source).
 
 ---
 
 ## Features
 
 ### Planning
-- Open Circuit and CCR (setpoint-based) planning, with OC bailout from the worst point of the dive
-- Multi-level profiles and repetitive dives with surface interval off-gassing
-- Up to 10 travel / bottom / diluent mixes and 6 deco / bailout mixes
-- Automatic gas switching at the best stop depth, with optional extra switch time
-- Configurable descent rate, ascent rate, deco ascent rate and final ascent rate
-- Last stop at 3 m or 6 m
-- Air / gas breaks on high-O2 deco (for example 20 min O2, 5 min back gas)
-- Salinity (fresh, EN13319, salt, Red Sea, custom) and altitude support
+- **Open Circuit** and **CCR** planning (setpoint-based), with automatic CCR bailout to open circuit
+- **Multi-level dives** (add levels) and **multi-dive days** (add dives with surface intervals), with residual N2 / He carried across dives and a daily OTU total
+- Two gas modes: **Best GAS Mix** (the app picks the gases) or **User input GAS** (you enter them)
+- Travel, bottom, diluent, deco and bailout gas roles
+- Automatic gas switching during the ascent
+- Configurable descent, ascent, deco ascent and final ascent rates
+- Last stop at 3 m or 6 m, detailed or compact (stops only) plan style
+- Gas breaks on high-oxygen deco
+- Water salinity: Fresh, EN13319, Salt, Red Sea or custom density
+- Dive site altitude, with an option for divers who arrived at altitude less than 12 hours ago
+- Metric (m / L / bar / °C) or Imperial (ft / cuft / psi / °F) units
 
-### Decompression models
-- **Bühlmann ZHL-16A**, **ZHL-16B**, **ZHL-16C**
-- **Gradient Factors** (GF Low / GF High) with presets: 100/100, 50/80, 30/85, 30/70, 20/80, 40/70
-- Live **GF99** and **Surface GF** per runtime row
-- No-decompression limit (NDL) and time to surface (TTS)
-- VPM-B planned for a later release
+### Decompression
+- **Bühlmann ZHL-16A, ZHL-16B and ZHL-16C** (ZHL-16C recommended)
+- **Gradient Factors** (GF Low / GF High)
+- Haldane loading at constant depth, Schreiner loading during ascents and descents
+- **GF99** and **Surface GF** read-outs, no-decompression limit (NDL) and time to surface
+- **VPM-B (experimental)** with conservatism 0 to 5. See [Known Limitations](#known-limitations).
 
 ### Gas management
-- **Best Mix** recommender for bottom, travel and deco gases
 - MOD, minimum (hypoxic) depth, END, EAD, PPN2 and gas density for every gas
 - Gas consumption per segment from bottom and deco RMV
-- Reserve rules: thirds, quarters, custom percent, or lost-gas (rock bottom)
-- Cylinder sizes, fill pressures and turn pressures
-- Optional gas price per fill
+- Bottom gas reserve rules: Thirds, Quarters, Half, or Rock-Bottom (2× stress)
+- Deco gas reserve rules: 1.5× required, or lost-gas scenario
+- Cylinder sizes and counts, auto-sized from your SAC rate in Best GAS Mix mode
 
 ### Oxygen and safety
-- CNS % (NOAA limits) with 90-minute surface half-time
-- Pulmonary OTU with daily REPEX guidance
-- Isobaric counter-diffusion (ICD) check at every gas switch, including the Rule of Fifths
-- Gas density warnings at 5.2 g/L and errors at 6.2 g/L
-- Volume alerts per gas type
+- CNS % from the NOAA oxygen limits, with surface decay between dives
+- Pulmonary OTU per dive and per day
+- Isobaric counter-diffusion (ICD) checked when the app chooses deco gases
+- A clear **PLAN VALID / PLAN ERRORS** status, with the reason for every error
 
 ### Output
-- Detailed or compact runtime table
-- Charts: dive profile with ceiling, partial pressures, tissue tensions, gas consumption, and an M-value learning chart
-- Export as PDF slate, PNG, plain text or JSON
-- Share any plan as a link (all inputs encoded in the URL)
-- Dark and light themes, mobile first, installable as an offline PWA
-
-
----
-
-## Quick Start
-
-### Requirements
-- Node.js 20 or later
-- npm 10 or later (or pnpm / yarn)
-
-### Install and run
-
-.APK file to be included soon & Published later on Google Play
+- Runtime table with depth, time, runtime, mix and ppO2
+- Six charts: dive profile, gas partial pressures, tissue compartment bars, tissue tension timeline, gas consumption, and an M-value diagram
+- **Export PDF Slate** (two-page dive slate and technical report) and **Export CSV Data**, saved to your phone or shared from the app
+- Save named plans, and the app reopens with your last plan
+- Dark and light themes
+- Safety disclaimer that must be accepted on first launch
 
 ---
 
-Open the address Vite prints (usually `http://localhost:5173`).
+## App Screens
 
-### Scripts
+The app has four tabs:
 
-| Command | What it does |
+| Tab | What you do there |
 |---|---|
-| `npm run dev` | Start the development server with hot reload |
-| `npm run build` | Type-check and build for production into `dist/` |
-| `npm run preview` | Serve the production build locally |
-| `npm test` | Run all unit and golden-schedule tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Lint with ESLint |
-| `npm run typecheck` | Run the TypeScript compiler without emitting |
+| **Settings** | Planning type, units, deco model, gradient factors, salinity, altitude, PPO2 and narcosis limits, ascent and descent rates, RMV, reserve rules, CCR setpoints, theme |
+| **Planner** | Dive levels and dives in the day, Build Dive Profile, runtime table, summary (runtime, CNS, OTU, gas), errors, contingency plans, PDF / CSV export, saved plans |
+| **Gases** | Recommend Best Mix, or add and edit your own travel, bottom, diluent, deco and bailout gases with cylinders |
+| **Charts** | Profile, partial pressures, tissue loading, gas consumption and M-value charts |
 
-### Deploy
-
-The build output is a static site. Deploy `dist/` to GitHub Pages, Netlify, Vercel, Cloudflare Pages or any static host.
-
-For GitHub Pages, set `base` in `vite.config.ts` to `/tec-deco-planner/` and publish `dist/` with the `actions/deploy-pages` workflow.
+> Screenshots will be added in `docs/screenshots/`.
 
 ---
 
 ## How to Plan a Dive
 
-1. **General settings:** choose Open Circuit or CCR, units, deco model and gradient factors.
-2. **Environment:** set water salinity and dive site elevation.
-3. **Profile:** enter the maximum depth and bottom time (add levels for a multi-level dive).
-4. **Gases:** press **Recommend Best Mix**, or enter your own bottom, travel and deco gases.
-5. **Limits:** check PPO2 bottom / deco / minimum, maximum END, gas density and ascent rates.
-6. **Consumption:** enter bottom and deco RMV and your cylinders.
-7. **Build Dive Profile:** read the runtime table, check every warning, then review the charts and contingency plans.
-8. **Export or share** the plan, and cross-check it with a second planner before the dive.
+1. **Settings:** choose Open Circuit or CCR, your units, the deco model (ZHL-16C recommended) and your gradient factors. Set the salinity and altitude of the dive site.
+2. **Planner:** enter the maximum depth and bottom time. Add levels for a multi-level dive, or add dives for a dive day.
+3. **Gases:** tap **Recommend Best Mix**, or enter your own gases and cylinders.
+4. **Planner:** tap **Build Dive Profile**. Read the runtime table and summary, and fix anything shown under **PLAN ERRORS**.
+5. **Charts:** check the profile, ppO2 and tissue loading.
+6. **Export** the PDF slate, and cross-check the plan with a second planner before you dive.
 
 ### Example
 
-40 m for 20 min on air, ZHL-16C, GF 20/80, salt water, deco on EAN50 and O2:
+40 m for 20 min on air, ZHL-16C, GF 20/80, salt water, deco on EAN50 and oxygen:
 
-| Action | Depth (m) | Stop (min) | Mix |
-|---|---|---|---|
-| Stop | 18 | 1 | EAN50 |
-| Stop | 12 | 1 | EAN50 |
-| Stop | 9 | 1 | EAN50 |
-| Stop | 6 | 3 | Oxygen |
-| Stop | 3 | 4 | Oxygen |
+| Depth (m) | Stop (min) | Gas |
+|---|---|---|
+| 18 | 1 | EAN50 |
+| 12 | 1 | EAN50 |
+| 9 | 1 | EAN50 |
+| 6 | 3 | Oxygen |
+| 3 | 4 | Oxygen |
 
-Total runtime about 35 minutes. Exact numbers vary slightly between planners because of rounding and gas-switch handling.
+Total runtime about 35 minutes. Planners round stops and handle gas switches differently, so expect differences of about one minute per stop from other planners.
 
 ---
 
@@ -150,23 +161,23 @@ Total runtime about 35 minutes. Exact numbers vary slightly between planners bec
 
 ### Bühlmann ZHL-16
 
-The model tracks nitrogen and helium in 16 theoretical tissue compartments with half-times from 4 to 635 minutes (N2) and 1.51 to 240.03 minutes (He).
+The model tracks nitrogen and helium in 16 tissue compartments, with half-times from 4 to 635 minutes for nitrogen and 1.51 to 240.03 minutes for helium.
 
 | Variant | Use |
 |---|---|
 | ZHL-16A | Original experimental coefficients |
 | ZHL-16B | More conservative middle compartments, designed for printed tables |
-| ZHL-16C | Most conservative middle compartments, designed for dive computers (default) |
+| ZHL-16C | Most conservative middle compartments, the standard for dive computers (recommended) |
 
-The three variants differ only in the nitrogen `a` coefficients. Helium coefficients and all half-times are shared.
+The three variants differ only in the nitrogen `a` coefficients.
 
-**Tissue loading** at constant depth uses the Haldane equation:
+Tissue loading at constant depth (Haldane):
 
 ```
 P(t) = P0 + (Pi − P0) × (1 − e^(−k·t)),   k = ln 2 / half-time
 ```
 
-During ascents and descents the planner uses the Schreiner equation:
+Tissue loading while changing depth (Schreiner):
 
 ```
 P(t) = Pi0 + R·(t − 1/k) − (Pi0 − P0 − R/k) × e^(−k·t)
@@ -174,242 +185,236 @@ P(t) = Pi0 + R·(t − 1/k) − (Pi0 − P0 − R/k) × e^(−k·t)
 
 ### Gradient Factors
 
-Gradient Factors scale how close each tissue may come to its Bühlmann M-value:
+Gradient Factors set how close each tissue may come to its Bühlmann M-value:
 
 ```
 Tolerated ambient pressure = (P_tissue − a × GF) / (GF / b + 1 − GF)
 ```
 
-- **GF Low** sets the depth of the first stop (lower = deeper first stop).
-- **GF High** sets the allowed supersaturation at the surface (lower = longer shallow stops).
-- GF rises linearly from GF Low at the first stop to GF High at the surface.
+- **GF Low** controls the first stop. Lower values give a deeper first stop.
+- **GF High** controls surfacing. Lower values give longer shallow stops.
+- GF moves in a straight line from GF Low at the first stop to GF High at the surface.
 - GF 100/100 is pure Bühlmann.
 
-Full coefficient tables and every formula are in [`docs/SPEC.md`](docs/SPEC.md).
+The full formulas and coefficient tables are in the build specification: [`public/assets/aistudio/TEC_DECO_PLANNER_SPEC_850e4700.md`](public/assets/aistudio/TEC_DECO_PLANNER_SPEC_850e4700.md).
 
 ---
 
-## Gas Selection: Best Mix
+## Best Gas Mix
 
-For a target depth, the recommender:
+In **Best GAS Mix** mode, for the planned depth the app:
 
-1. Sets oxygen so PPO2 at maximum depth stays at or below **PPO2 Bottom**.
-2. Adds helium until **END** is within your limit (with or without O2 counted as narcotic).
-3. Adds more helium if **gas density** is above 5.2 g/L.
-4. Detects **hypoxic** mixes and adds a travel gas for the descent and shallow ascent.
-5. Picks **deco gases** by depth band: O2 at 6 m, EAN50 at 21 m, and richer trimix intermediates for deeper dives.
-6. Optionally snaps to standard mixes: Air, EAN32, 21/35, 18/45, 15/55, 12/65, 10/70.
+1. Sets oxygen so ppO2 at maximum depth stays within your **PPO2 Bottom** limit.
+2. Adds helium until the **END** is within your narcosis limit.
+3. Adds more helium if the **gas density** is too high.
+4. Adds a **travel gas** when the bottom mix is hypoxic at the surface.
+5. Chooses **deco gases** for the depth (for example EAN50 and oxygen), with helium-based intermediate deco gases on deep dives, checked for ICD.
+6. Sizes the **cylinders** from your SAC rate.
 
-| Metric | Formula |
+| Metric | Meaning |
 |---|---|
-| MOD | depth where PPO2 = PPO2 max / fO2 |
-| Minimum depth | depth where PPO2 = PPO2 min / fO2 |
-| END (O2 narcotic) | depth where (fN2 + fO2) × P_amb = P_surface |
-| Density | (fO2 × 1.429 + fN2 × 1.2506 + fHe × 0.1786) × P_amb |
+| MOD | Deepest depth where ppO2 stays within the limit |
+| Minimum depth | Shallowest depth where the gas is not hypoxic |
+| END | Equivalent narcotic depth |
+| Density | Gas density at depth, in g/L |
 
 ---
 
-## Safety Checks and Alerts
+## Safety Checks
 
-| Check | Default limit | Level |
-|---|---|---|
-| PPO2 bottom | 1.40 bar | Warning, error above 1.60 |
-| PPO2 deco | 1.60 bar | Error |
-| Hypoxic gas | PPO2 below 0.18 bar | Error |
-| Narcosis (END / PPN2) | END 30 m | Warning |
-| Gas density | 5.2 g/L | Warning, error above 6.2 g/L |
-| ICD at gas switch | ΔPPN2 above 0.5 bar, or Rule of Fifths | Warning |
-| CNS | 80 % | Warning, error above 100 % |
-| OTU | 300 per dive | Warning |
-| Gas volume | Required plus reserve above available | Error |
-| Gas used beyond its MOD | Any | Error |
+The app shows **critical errors only**, so a valid plan is not cluttered with minor notes. A plan with an error is still shown, marked **PLAN ERRORS**, with the reason.
 
-Errors never hide the plan. The plan is shown in red with the reason, so you can fix the inputs.
+| Error | When it is raised |
+|---|---|
+| Hypoxic gas | ppO2 below your PPO2 Min at any point |
+| ppO2 too high (bottom or deco) | ppO2 above 1.60 bar (or your limit, if higher) |
+| MOD exceeded | A gas used deeper than its MOD |
+| Gas density | Above 6.5 g/L |
+| CNS | Above your CNS error limit |
+| Gas volume | Not enough gas for the plan plus reserve |
+| Gradient factors | GF Low set higher than GF High |
+| No breathable gas | No gas is safe to breathe at some depth |
+| Deco overflow | Decompression obligation too large to plan |
 
 ---
 
-## Tech Stack and Architecture
+## Build from Source
+
+### Requirements
+- Android Studio (latest stable)
+- JDK 17 or later (the project compiles to Java 11 bytecode)
+- Android SDK 36 (min SDK 24, Android 7.0)
+
+### Steps
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP.git
+   ```
+2. Open the folder in Android Studio and let Gradle sync.
+3. Select the **app** run configuration and run it on a device or emulator.
+
+### Release builds
+
+Release signing reads the keystore from environment variables. Set these before building a release:
+
+| Variable | Purpose |
+|---|---|
+| `KEYSTORE_PATH` | Path to your upload keystore (default `my-upload-key.jks` in the project root) |
+| `STORE_PASSWORD` | Keystore password |
+| `KEY_PASSWORD` | Password of the `upload` key |
+
+Never commit keystores or passwords to the repository.
+
+---
+
+## Tech Stack
 
 | Layer | Choice |
 |---|---|
-| UI | React 18, TypeScript (strict), Tailwind CSS |
-| State | Zustand, persisted to localStorage |
-| Charts | Recharts |
-| Computation | Pure TypeScript engine running in a Web Worker |
-| Tests | Vitest |
-| Build | Vite, PWA plugin for offline use |
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3 |
+| Architecture | MVVM (ViewModel + StateFlow) |
+| Storage | Jetpack DataStore (settings, last plan, saved plans) |
+| Charts | Custom Compose Canvas charts |
+| Export | Android `PdfDocument` for PDF, CSV text, FileProvider for sharing |
+| Tests | JUnit 4, Robolectric |
+| Build | Gradle (Kotlin DSL), version catalog |
 
-**Design rules**
-- The engine in `src/engine` has no UI imports. It takes an input object and returns a result object, with no side effects.
-- All internal units are SI: bar, metres, litres, minutes, °C. Imperial units are converted only in the UI.
-- Recalculation is debounced (300 ms) and runs in a worker, so the UI never freezes.
+The decompression engine in `engine/` is plain Kotlin with no Android or UI code, so it can be tested on its own.
 
 ---
 
 ## Project Structure
 
 ```
-tec-deco-planner/
-├── public/
-│   ├── icons/                 App icons, favicon, maskable PWA icon
-│   └── manifest.webmanifest
-├── src/
-│   ├── engine/                Decompression and gas engine (pure TS)
-│   │   ├── constants.ts       Physical constants, gas densities, NOAA tables
-│   │   ├── coefficients.ts    ZHL-16A / B / C tables
-│   │   ├── pressure.ts        Depth, pressure, altitude, salinity
-│   │   ├── gas.ts             MOD, END, EAD, density, minimum depth
-│   │   ├── bestMix.ts         Bottom, travel and deco gas recommender
-│   │   ├── tissues.ts         Haldane and Schreiner equations
-│   │   ├── buhlmann.ts        M-values, ceilings, gradient factors
-│   │   ├── planner.ts         Schedule builder
-│   │   ├── oxygen.ts          CNS and OTU
-│   │   ├── consumption.ts     Gas volumes, reserves, turn pressure
-│   │   ├── ccr.ts             Closed circuit model
-│   │   ├── checks.ts          Warnings and alerts
-│   │   ├── repetitive.ts      Surface interval
-│   │   ├── contingency.ts     Deeper, longer, lost gas, bailout
-│   │   └── index.ts           Public API
-│   ├── worker/                Web Worker wrapper for the engine
-│   ├── state/                 Zustand store
-│   ├── ui/                    Sections, components and charts
-│   └── export/                PDF, PNG, text and share-link export
-├── tests/                     Unit and golden-schedule tests
-├── docs/
-│   ├── SPEC.md                Full build specification
-│   └── screenshots/
-├── index.html
-├── vite.config.ts
-├── package.json
-└── README.md
+Extreme-DECO-Planner-Android-Mobile-APP/
+├── app/
+│   └── src/
+│       ├── main/
+│       │   ├── java/com/example/
+│       │   │   ├── MainActivity.kt              App entry, tabs, disclaimer
+│       │   │   ├── engine/                      Decompression and gas engine (pure Kotlin)
+│       │   │   │   ├── Constants.kt             Physical constants, gas densities, NOAA limits
+│       │   │   │   ├── Coefficients.kt          ZHL-16A / B / C tables, VPM-B parameters
+│       │   │   │   ├── UnitsAndPressure.kt      Pressure, altitude, salinity, unit conversion
+│       │   │   │   ├── TissuesAndBuhlmann.kt    Haldane, Schreiner, M-values, ceilings, GF, NDL
+│       │   │   │   ├── GasCalculator.kt         MOD, END, EAD, density, Best Mix, ICD
+│       │   │   │   ├── OxygenAndConsumption.kt  CNS, OTU, gas use, safety checks
+│       │   │   │   ├── DivePlannerEngine.kt     Schedule builder, multi-dive day, contingencies, CCR bailout
+│       │   │   │   └── Models.kt                Data classes and enums
+│       │   │   ├── data/PlannerRepository.kt    DataStore persistence
+│       │   │   ├── export/ExportManager.kt      PDF slate and CSV export
+│       │   │   └── ui/
+│       │   │       ├── screens/                 Settings, Planner, Gases, Charts
+│       │   │       ├── components/              Charts and shared controls
+│       │   │       ├── viewmodel/               PlannerViewModel
+│       │   │       └── theme/                   Colours, typography, theme
+│       │   ├── res/                             Icons, fonts, images, strings
+│       │   └── AndroidManifest.xml
+│       ├── test/                                Unit tests (engine)
+│       └── androidTest/                         Instrumented tests
+├── public/assets/aistudio/                      Build specification
+├── gradle/libs.versions.toml                    Dependency versions
+├── build.gradle.kts
+└── settings.gradle.kts
 ```
-
----
-
-## Engine API
-
-```ts
-import { planDive, recommendBottomMix } from './engine';
-
-const result = planDive({
-  model: 'ZHL16C',
-  gfLow: 0.20,
-  gfHigh: 0.80,
-  salinity: 'salt',
-  elevation: 0,
-  levels: [{ depth: 40, time: 20 }],
-  gases: [
-    { name: 'Air',   o2: 0.21, he: 0, role: 'bottom' },
-    { name: 'EAN50', o2: 0.50, he: 0, role: 'deco' },
-    { name: 'O2',    o2: 1.00, he: 0, role: 'deco' },
-  ],
-  ppO2Bottom: 1.4,
-  ppO2Deco: 1.6,
-  descentRate: 20,
-  ascentRate: 9,
-  decoAscentRate: 9,
-  surfaceAscentRate: 3,
-  lastStop: 3,
-  bottomRmv: 20,
-  decoRmv: 15,
-});
-
-console.log(result.stops, result.runtime, result.oxygen.cns, result.warnings);
-```
-
-| Function | Returns |
-|---|---|
-| `planDive(input)` | Segments, stops, runtime, TTS, tissue timeline, CNS, OTU, gas use, warnings |
-| `recommendBottomMix(depth, settings)` | Recommended bottom gas with MOD, END, density and notes |
-| `recommendTravelGas(bottom, settings)` | Travel gas, or `null` if not needed |
-| `recommendDecoGases(depth, bottom, settings)` | Ordered list of deco gases |
-| `gasMetrics(gas, depth, env, settings)` | PPO2, PPN2, PPHe, END, EAD, density, MOD, minimum depth |
-| `ndl(depth, gas, settings)` | No-decompression limit in minutes |
-| `ceiling(tissues, gf, model, env)` | Current ceiling in metres |
-| `gf99(tissues, pAmb, model)` | Current supersaturation as % of the M-value gradient |
-| `contingencies(input)` | Array of contingency plans |
 
 ---
 
 ## Testing and Validation
 
-```bash
-npm test
-```
+Run the unit tests from Android Studio: right-click `app/src/test` and choose **Run Tests**, or open the Gradle panel and run **app › Tasks › verification › test**.
 
-The suite includes:
+`DecompressionEngineTest.kt` covers:
 
-- **Unit tests** for pressure, altitude, MOD, END, density, Haldane, Schreiner, CNS and OTU, checked against hand-calculated values.
-- **Golden schedules** for reference dives (air, nitrox and trimix, several GF settings). Each stop must be within ±1 minute and the runtime within ±2 minutes of the reference.
-- **Property tests**, for example: a lower GF High never shortens deco, ZHL-16C is never less conservative than ZHL-16A, and adding a richer deco gas never lengthens deco.
+- Pressure and altitude, MOD, END and density
+- Haldane, Schreiner and the Gradient Factor formula
+- CNS and OTU
+- **Golden schedules** for four reference dives (40 m air at GF 20/80 and 100/100, 60 m on 18/45 at GF 30/70, 30 m air without deco gas)
+- Model conservatism (ZHL-16C at least as conservative as ZHL-16A) and GF monotonicity
+- Residual nitrogen across a multi-dive day
+- Best Gas Mix for every stage, and cylinder sizing from SAC rate
+- The critical-errors-only policy (a standard dive has no alerts, a dangerous gas raises an error)
 
-Before relying on any change to the engine, cross-check results against an established planner such as Subsurface or MultiDeco.
+Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
 
 ---
 
-## Configuration Reference
+## Default Settings
 
-| Setting | Default | Range |
-|---|---|---|
-| Deco model | ZHL-16C | ZHL-16A, ZHL-16B, ZHL-16C |
-| Gradient factors | 30 / 70 | 5 to 100 % |
-| PPO2 bottom / deco / min | 1.40 / 1.60 / 0.18 bar | |
-| Maximum END | 30 m | 20 to 50 m |
-| Maximum gas density | 5.2 g/L | |
-| Descent rate | 20 m/min | 5 to 30 |
-| Ascent rate to first stop | 9 m/min | 3 to 18 |
-| Deco ascent rate | 9 m/min | 1 to 18 |
-| Last stop to surface | 3 m/min | 1 to 9 |
-| Last stop | 3 m | 3 or 6 m |
-| Bottom / deco RMV | 20 / 15 L/min | |
-| Water salinity | Salt (1030 kg/m³) | Fresh, EN13319, Salt, Red Sea, Custom |
-| Elevation | 0 m | 0 to 5000 m |
+| Setting | Default |
+|---|---|
+| Deco model | ZHL-16C |
+| Gas mode | Best GAS Mix |
+| PPO2 bottom / deco / min | 1.40 / 1.60 / 0.18 bar |
+| Water | Salt (1030 kg/m³) |
+| Last stop | 3 m |
+| Units | Metric |
+
+All defaults can be changed in the **Settings** tab.
+
+---
+
+## Known Limitations
+
+- **VPM-B is experimental and approximate.** It is not a full implementation of Baker's VPM-B algorithm. It reuses the ZHL-16C tissue model and makes the tolerated supersaturation stricter, scaled by the conservatism setting. Do not treat its schedules as true VPM-B schedules. Use the Bühlmann models for real dive planning.
+- **Alerts show critical errors only.** Lower-level warnings such as END above your narcosis limit, ppO2 between your chosen limit and 1.60 bar, OTU, and ICD at user-chosen gas switches are not raised as alerts. Check these values yourself in the runtime table and summary.
+- Results can differ by about one minute per stop from other planners because of rounding and gas-switch handling.
+- The app has not yet been independently validated. Always cross-check with a second planner.
 
 ---
 
 ## Roadmap
 
-- [ ] VPM-B model with conservatism settings
-- [ ] Passive semi-closed rebreather (pSCR) mode
-- [ ] Real-gas (Z-factor) cylinder volume correction
-- [ ] Dive log import and comparison with planned profile
-- [ ] Multi-language interface (Arabic and English first)
-- [ ] Printable waterproof slate templates
+- [ ] Signed APK on GitHub Releases
+- [ ] Google Play release
+- [ ] Full VPM-B implementation
+- [ ] Optional warning level (END, ICD, OTU, chosen ppO2 limits)
+- [ ] Screenshots and a short demo video
+- [ ] Arabic language support
+- [ ] pSCR (passive semi-closed rebreather) mode
 
 ---
 
 ## Contributing
 
-Contributions are welcome, especially independent validation of the engine.
+Bug reports, test cases and independent validation of the engine are very welcome.
 
-1. Fork the repository and create a branch: `git checkout -b feature/my-change`
-2. Add or update tests for any engine change.
-3. Run `npm run lint`, `npm run typecheck` and `npm test`.
-4. Open a pull request that explains what changed and how you validated it.
+1. Open an [issue](../../issues) describing the bug or idea. For a planning bug, include the full settings and the schedule you expected.
+2. Fork the repository and create a branch: `git checkout -b fix/my-change`
+3. Add or update tests in `app/src/test` for any engine change.
+4. Run the tests and open a pull request explaining what changed and how you validated it.
 
-Engine changes that alter any decompression result must include before-and-after schedules and a comparison with at least one other planner.
+Any change that alters a decompression result must include before-and-after schedules and a comparison with at least one other planner.
 
 ---
 
 ## References
 
-- A. A. Bühlmann, *Tauchmedizin* / *Decompression: Decompression Sickness*, Springer
-- Erik C. Baker, *Clearing Up the Confusion About "Deep Stops"* and *Understanding M-values*
+- A. A. Bühlmann, *Decompression: Decompression Sickness*, Springer
+- Erik C. Baker, *Understanding M-values* and *Clearing Up the Confusion About "Deep Stops"*
 - Erik C. Baker, *Oxygen Toxicity Calculations*
 - NOAA Diving Manual, oxygen exposure limits
-- Anthony and Mitchell, *Respiratory physiology of rebreather diving* (gas density limits)
-- Subsurface open-source dive log and planner, for cross-validation
+- Anthony and Mitchell, research on gas density limits in diving
+- Subsurface, open-source dive log and planner (used for cross-checking)
+
+---
+
+## Contact
+
+Built by **Ramy Reda**, an engineer who loves technical scuba diving.
+
+For proposals and feedback: **RamyRedaM@gmail.com**, or open an issue on this repository.
 
 ---
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Copyright © 2026 Ramy Reda. All rights reserved.
 
-The authors accept no liability for any injury or loss arising from the use of this software. See the warning at the top of this file.
+The author accepts no liability for any injury or loss arising from the use of this software. See the warning at the top of this file.
 
 ---
 
-<p align="center">
-  Built by <strong>Ramy Reda</strong> · Plan the dive, dive the plan.
-</p>
+<p align="center"><em>Plan the dive, dive the plan.</em></p>
