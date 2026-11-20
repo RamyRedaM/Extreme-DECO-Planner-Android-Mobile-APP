@@ -82,15 +82,6 @@ Everything is calculated client-side. No account, no server, no data leaves your
 - Share any plan as a link (all inputs encoded in the URL)
 - Dark and light themes, mobile first, installable as an offline PWA
 
----
-
-## Screenshots
-
-> Add your own screenshots to `docs/screenshots/` and update the paths below.
-
-| Dive settings | Runtime table | Profile chart |
-|---|---|---|
-| ![Settings](docs/screenshots/settings.png) | ![Runtime](docs/screenshots/runtime.png) | ![Profile](docs/screenshots/profile.png) |
 
 ---
 
@@ -102,12 +93,9 @@ Everything is calculated client-side. No account, no server, no data leaves your
 
 ### Install and run
 
-```bash
-git clone https://github.com/<your-username>/tec-deco-planner.git
-cd tec-deco-planner
-npm install
-npm run dev
-```
+.APK file to be included soon & Published later on Google Play
+
+---
 
 Open the address Vite prints (usually `http://localhost:5173`).
 
