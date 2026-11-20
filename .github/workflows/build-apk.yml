@@ -1,0 +1,63 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Create debug signing key
+        run: |
+          keytool -genkeypair -v -keystore debug.keystore \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/debug/app-debug.apk "Extreme-DECO-Planner-v$VERSION.apk"
+
+      - name: Upload APK as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Extreme-DECO-Planner-v${{ env.VERSION }}
+          path: Extreme-DECO-Planner-v${{ env.VERSION }}.apk
+
+      - name: Attach APK to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Extreme DECO Planner ${{ github.ref_name }}
+          files: Extreme-DECO-Planner-v${{ env.VERSION }}.apk
+          body: |
+            Test build of Extreme DECO Planner for Android (7.0 or later).
+
+            **Install:** download the APK on your phone, open it, and allow "Install unknown apps" for your browser or file manager when Android asks.
+
+            This is a test build signed with a debug key. It is for training and planning only and does not replace training, a dive computer or your own judgement. Always cross-check plans with a second planner.
