@@ -49,11 +49,13 @@ jobs:
           name: Extreme-DECO-Planner-v${{ env.VERSION }}
           path: Extreme-DECO-Planner-v${{ env.VERSION }}.apk
 
-      - name: Attach APK to release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish APK on the Releases page
         uses: softprops/action-gh-release@v2
         with:
-          name: Extreme DECO Planner ${{ github.ref_name }}
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: Extreme DECO Planner v${{ env.VERSION }}
+          prerelease: true
           files: Extreme-DECO-Planner-v${{ env.VERSION }}.apk
           body: |
             Test build of Extreme DECO Planner for Android (7.0 or later).
