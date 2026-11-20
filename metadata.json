@@ -1,0 +1,6 @@
+{
+  "name": "Extreme Deco Planner",
+  "description": "Technical scuba decompression dive planner with Bühlmann ZHL-16A/B/C & VPM-B, Gradient Factors, multi-dive day tissue tracking, interactive charts, and PDF/CSV export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

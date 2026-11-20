@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Extreme Deco Planner</string>
+    <string name="app_brand_title">Extreme DECO Planner Ver 1.27.2</string>
+    <string name="app_brand_subtitle">by Ramy.DECO</string>
+    <string name="about_button">About</string>
+    <string name="about_title">About</string>
+    <string name="about_message">This app is built by an Engineer who is in love with TEC Scuba Diving, for proposals contact me at, RamyRedaM@gmail.com</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_settings">Settings</string>
+    <string name="nav_planner">Planner</string>
+    <string name="nav_gases">Gases</string>
+    <string name="nav_charts">Charts</string>
+
+    <!-- Safety Disclaimer -->
+    <string name="disclaimer_title">Technical Diving Safety Warning</string>
+    <string name="disclaimer_body">WARNING: There is always a risk of decompression sickness (DCS), oxygen toxicity and other injuries for any dive profile, even if you follow the plan produced by this tool. No algorithm or planner can eliminate this risk. This software is for training and planning purposes only and does not replace proper technical diver training, certification, a dive computer, or your own judgement. Always dive within your training limits, cross-check plans with a second independent planner, and carry backup tables. You use this tool entirely at your own risk.</string>
+    <string name="disclaimer_checkbox">I understand and accept all risks</string>
+    <string name="disclaimer_accept_button">I understand</string>
+    <string name="disclaimer_footer">Planning tool only — cross-check independently &amp; dive within training limits.</string>
+
+    <!-- Export Actions -->
+    <string name="export_pdf">Export PDF Slate</string>
+    <string name="export_csv">Export CSV Data</string>
+    <string name="share_pdf">Share PDF</string>
+    <string name="share_csv">Share CSV</string>
+    <string name="export_success">Export saved successfully</string>
+    <string name="export_error">Unable to complete export</string>
+
+    <!-- Common Labels -->
+    <string name="recommend_best_mix">Recommend Best Mix</string>
+    <string name="add_dive">Add Dive</string>
+    <string name="add_level">Add Level</string>
+    <string name="plan_valid">PLAN VALID</string>
+    <string name="plan_warnings">WARNINGS</string>
+    <string name="plan_errors">PLAN ERRORS</string>
+</resources>
