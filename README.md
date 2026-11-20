@@ -10,11 +10,16 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2.apk"><strong>⬇ Download the APK (v1.27.2)</strong></a>
+</p>
+
+<p align="center">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
   <img alt="Version" src="https://img.shields.io/badge/version-1.27.2-0891B2">
   <img alt="Status" src="https://img.shields.io/badge/status-beta-FACC15">
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml"><img alt="Build APK" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml/badge.svg"></a>
 </p>
 
 ---
@@ -66,9 +71,20 @@ No account, no server and no internet connection are needed. Your settings and s
 
 ## Download
 
-The signed `.apk` will be attached to [GitHub Releases](../../releases) soon, and the app will be published on Google Play later.
+**Latest test build: [Extreme-DECO-Planner-v1.27.2.apk](https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2.apk)** (about 18 MB, Android 7.0 or later)
 
-Until then, you can [build it from source](#build-from-source).
+All versions and release notes are on the [Releases page](https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases). A Google Play release will follow later.
+
+### How to install
+
+1. Open the download link on your Android phone and download the APK.
+2. Tap the downloaded file. When Android asks, allow **Install unknown apps** for your browser or file manager, then tap **Install**.
+3. If Google Play Protect warns that the app is unknown, tap **Install anyway**. This is normal for apps installed outside Google Play.
+
+> [!NOTE]
+> This is a **test build** signed with a temporary debug key. A later build signed with a different key cannot install over it as an update: uninstall the old version first. Your saved plans are removed when you uninstall.
+
+You can also [build the app from source](#build-from-source).
 
 ---
 
@@ -266,6 +282,16 @@ Release signing reads the keystore from environment variables. Set these before 
 
 Never commit keystores or passwords to the repository.
 
+### Automatic APK builds (GitHub Actions)
+
+The workflow [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml) builds the APK on GitHub's servers, with no local setup needed:
+
+1. On GitHub, open **Actions › Build APK › Run workflow** (on the `main` branch).
+2. The workflow builds a debug-signed APK with JDK 17 and Gradle 9.3.1.
+3. It publishes the APK as a pre-release named after `versionName`, for example `v1.27.2`, and also keeps it as a downloadable build artifact.
+
+Before each new public build, raise `versionCode` and `versionName` in `app/build.gradle.kts`. Otherwise the new APK replaces the file in the existing release, and Android will not see it as an update.
+
 ---
 
 ## Tech Stack
@@ -367,7 +393,8 @@ All defaults can be changed in the **Settings** tab.
 
 ## Roadmap
 
-- [ ] Signed APK on GitHub Releases
+- [x] Test APK on GitHub Releases (v1.27.2)
+- [ ] APK signed with a permanent release key
 - [ ] Google Play release
 - [ ] Full VPM-B implementation
 - [ ] Optional warning level (END, ICD, OTU, chosen ppO2 limits)
