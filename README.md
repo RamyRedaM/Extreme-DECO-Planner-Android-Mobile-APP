@@ -212,7 +212,7 @@ Tolerated ambient pressure = (P_tissue − a × GF) / (GF / b + 1 − GF)
 - GF moves in a straight line from GF Low at the first stop to GF High at the surface.
 - GF 100/100 is pure Bühlmann.
 
-The full formulas and coefficient tables are in the build specification: [`public/assets/aistudio/TEC_DECO_PLANNER_SPEC_850e4700.md`](public/assets/aistudio/TEC_DECO_PLANNER_SPEC_850e4700.md).
+
 
 ---
 
