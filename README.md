@@ -38,7 +38,8 @@
 - [How to Plan a Dive](#how-to-plan-a-dive)
 - [Decompression Models](#decompression-models)
 - [Best Gas Mix](#best-gas-mix)
-- [Safety Checks](#safety-checks)
+- [Surface Interval Calculator](#surface-interval-calculator)
+- [Safety Alerts](#safety-alerts)
 - [Build from Source](#build-from-source)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -94,6 +95,7 @@ You can also [build the app from source](#build-from-source).
 - **Open Circuit** and **CCR** planning (setpoint-based), with automatic CCR bailout to open circuit
 - **Multi-level dives** (add levels) and **multi-dive days** (add dives with surface intervals), with residual N2 / He carried across dives and a daily OTU total
 - Two gas modes: **Best GAS Mix** (the app picks the gases) or **User input GAS** (you enter them)
+- **Recreational (REC) mode, automatic:** in Best GAS Mix mode, a dive shallower than 40 m that stays within the no-decompression limit is planned as a recreational dive on Air or Nitrox (EAN32 by default), with no trimix and no deco gases. Deeper or longer dives switch to full technical planning.
 - Travel, bottom, diluent, deco and bailout gas roles
 - Automatic gas switching during the ascent
 - Configurable descent, ascent, deco ascent and final ascent rates
@@ -117,11 +119,14 @@ You can also [build the app from source](#build-from-source).
 - Deco gas reserve rules: 1.5× required, or lost-gas scenario
 - Cylinder sizes and counts, auto-sized from your SAC rate in Best GAS Mix mode
 
+### Surface intervals
+- **Surface Interval Calculator** on the Planner tab, using Bühlmann ZHL-16C: remaining nitrogen and helium in all 16 tissue compartments, leading compartment, Surface GF, CNS decay, time to clear 90% of the excess gas, and the NDL for your next dive. See [Surface Interval Calculator](#surface-interval-calculator).
+
 ### Oxygen and safety
 - CNS % from the NOAA oxygen limits, with surface decay between dives
 - Pulmonary OTU per dive and per day
-- Isobaric counter-diffusion (ICD) checked when the app chooses deco gases
-- A clear **PLAN VALID / PLAN ERRORS** status, with the reason for every error
+- **Safety alerts in four colour-coded levels:** CRITICAL (red), HIGH (orange), MEDIUM (yellow) and LOW (gray), covering more than 30 checks. See [Safety Alerts](#safety-alerts).
+- A severity summary at the top of the alerts list, and a status pill that shows **PLAN READY** or the highest alert level
 
 ### Output
 - Runtime table with depth, time, runtime, mix and ppO2
@@ -140,7 +145,7 @@ The app has four tabs:
 | Tab | What you do there |
 |---|---|
 | **Settings** | Planning type, units, deco model, gradient factors, salinity, altitude, PPO2 and narcosis limits, ascent and descent rates, RMV, reserve rules, CCR setpoints, theme |
-| **Planner** | Dive levels and dives in the day, Build Dive Profile, runtime table, summary (runtime, CNS, OTU, gas), errors, contingency plans, PDF / CSV export, saved plans |
+| **Planner** | Dive levels and dives in the day, Build Dive Profile, runtime table, summary (runtime, CNS, OTU, gas), colour-coded safety alerts, contingency plans, Surface Interval Calculator, PDF / CSV export, saved plans |
 | **Gases** | Recommend Best Mix, or add and edit your own travel, bottom, diluent, deco and bailout gases with cylinders |
 | **Charts** | Profile, partial pressures, tissue loading, gas consumption and M-value charts |
 
@@ -153,9 +158,10 @@ The app has four tabs:
 1. **Settings:** choose Open Circuit or CCR, your units, the deco model (ZHL-16C recommended) and your gradient factors. Set the salinity and altitude of the dive site.
 2. **Planner:** enter the maximum depth and bottom time. Add levels for a multi-level dive, or add dives for a dive day.
 3. **Gases:** tap **Recommend Best Mix**, or enter your own gases and cylinders.
-4. **Planner:** tap **Build Dive Profile**. Read the runtime table and summary, and fix anything shown under **PLAN ERRORS**.
-5. **Charts:** check the profile, ppO2 and tissue loading.
-6. **Export** the PDF slate, and cross-check the plan with a second planner before you dive.
+4. **Planner:** tap **Build Dive Profile**. Read the runtime table and summary, then work through the safety alerts: fix every **CRITICAL** (red) alert, and review **HIGH** (orange) and **MEDIUM** (yellow) ones.
+5. **Repetitive dive?** Use the **Surface Interval Calculator** to see how much gas your tissues still hold and your NDL for the next dive, then tap **Apply** or **Add Dive 2** to carry the interval into the dive day.
+6. **Charts:** check the profile, ppO2 and tissue loading.
+7. **Export** the PDF slate, and cross-check the plan with a second planner before you dive.
 
 ### Example
 
@@ -236,21 +242,70 @@ In **Best GAS Mix** mode, for the planned depth the app:
 
 ---
 
-## Safety Checks
+## Surface Interval Calculator
 
-The app shows **critical errors only**, so a valid plan is not cluttered with minor notes. A plan with an error is still shown, marked **PLAN ERRORS**, with the reason.
+Found on the **Planner** tab, below the contingency plans. It takes the tissue state at the end of the dive you are viewing and simulates off-gassing on the surface, breathing air, with the **Bühlmann ZHL-16C** model (whichever model you plan with).
 
-| Error | When it is raised |
+**Inputs**
+- Surface interval from 0 to 12 hours, with a slider and quick presets: 30 min, 1 h, 1.5 h, 2 h, 3 h, 4 h, 6 h and 12 h
+- Next dive depth (9 to 60 m, in 3 m steps) and the gas for the next dive
+
+**Results**
+
+| Result | What it tells you |
 |---|---|
-| Hypoxic gas | ppO2 below your PPO2 Min at any point |
-| ppO2 too high (bottom or deco) | ppO2 above 1.60 bar (or your limit, if higher) |
-| MOD exceeded | A gas used deeper than its MOD |
-| Gas density | Above 6.5 g/L |
-| CNS | Above your CNS error limit |
-| Gas volume | Not enough gas for the plan plus reserve |
-| Gradient factors | GF Low set higher than GF High |
-| No breathable gas | No gas is safe to breathe at some depth |
-| Deco overflow | Decompression obligation too large to plan |
+| Remaining inert gas | Excess nitrogen and helium still in your tissues, as a % of what you surfaced with, plus peak N2 and He tensions |
+| Leading compartment | The ZHL-16C compartment controlling your repetitive dive, its half-time and its load before and after the interval |
+| Surface GF and CNS | Surface GF at surfacing and after the interval, and CNS % after the 90-minute half-time decay |
+| Next dive NDL | No-decompression limit for the next dive with your residual gas, compared with a fresh diver |
+| Time to clear | Estimated time until less than 10% of the excess inert gas remains (up to 24 h) |
+| 16-compartment chart | Load of each compartment (C1 fast to C16 slow) at surfacing and after the interval |
+
+**Actions:** **Apply to Dive N** sets this interval on the next dive in your dive day. **Add Dive 2** creates a new repetitive dive with this interval.
+
+> [!NOTE]
+> These figures are model estimates. The Bühlmann model was not designed to predict residual bubbles after a dive, so treat them as planning guidance and follow your dive computer and your training.
+
+---
+
+## Safety Alerts
+
+Every plan is checked against more than 30 safety rules. Alerts are sorted from most to least severe, and each one says what was found and why it matters.
+
+| Level | Colour | Meaning | What to do |
+|---|---|---|---|
+| **CRITICAL** | Red | The plan is unsafe, or a hard physiological limit is exceeded | Change the plan before diving |
+| **HIGH** | Orange | A limit you set, or an accepted safe limit, is exceeded | Fix it, or accept it knowingly |
+| **MEDIUM** | Yellow | Elevated risk or a reduced safety margin | Review it before diving |
+| **LOW** | Gray | Advisory information | Be aware |
+
+A plan with any CRITICAL alert is marked as having errors. The plan is still shown, so you can see what went wrong.
+
+### What is checked
+
+| Area | Checks and levels |
+|---|---|
+| **Oxygen (ppO2)** | Above 1.60 bar: CRITICAL. Above your PPO2 Bottom or PPO2 Deco limit: HIGH. Gas switch too close to its MOD: MEDIUM |
+| **Hypoxia** | ppO2 below your PPO2 Min, or a hypoxic bottom mix with no travel gas that covers the surface: CRITICAL |
+| **MOD** | Gas used deeper than its 1.60 bar MOD: CRITICAL. Deeper than the MOD for your own limit: HIGH |
+| **Gas density** | Above 6.2 g/L: CRITICAL. Above your density limit (default 5.2 g/L): HIGH |
+| **Narcosis (END / ppN2)** | END above 45 m: CRITICAL. Above 40 m: HIGH. Above your END limit: MEDIUM |
+| **CNS oxygen clock** | Above 100% (or your error limit): CRITICAL. Above 80% (or your warning limit): HIGH. 50% or more: LOW |
+| **OTU (lung oxygen dose)** | Above your per-dive limit, or more than 850 OTU in a day: HIGH. Daily total above your per-dive limit: MEDIUM |
+| **Oxygen breaks** | More than 20 minutes of high-ppO2 deco without an air break: HIGH |
+| **ICD (gas switches)** | ppN2 jump above your ICD limit: HIGH. Rule of Fifths broken: MEDIUM |
+| **Surfacing** | Surface GF above 100%: CRITICAL. Above 90%: HIGH |
+| **Gas supply** | Not enough gas for the plan plus reserve: CRITICAL. Surfacing pressure low: MEDIUM. Tight margin, or use above your alert budget: LOW |
+| **Deco gas strategy** | Deco dive with no deco gas, or a deep dive with no mid-range deco gas: HIGH |
+| **Rates** | Fast ascent (above 12 m/min to the first stop, or 9 m/min to the surface): MEDIUM. Fast descent (above 24 m/min): MEDIUM |
+| **Deep helium (HPNS)** | 150 m or deeper: CRITICAL. 120 m or deeper with high helium or a fast descent: HIGH |
+| **CCR** | Diluent above 1.60 bar ppO2 at depth, or no / too little bailout gas: CRITICAL. Diluent above 1.40 bar: HIGH |
+| **Repetitive dives** | Surface interval under 30 min (or high carried-over CNS): HIGH. Under 60 min: MEDIUM. Reverse profile (deeper than the previous dive): HIGH or MEDIUM |
+| **Profile shape** | Yo-yo (sawtooth) multi-level profile: MEDIUM. Planned time close to the NDL: MEDIUM. 6 m last stop on heavy deco: MEDIUM |
+| **Exposure** | Time to surface of 90 min or more, or long deco in cold water: HIGH. Long dive or cold water (10 °C or less): MEDIUM |
+| **Altitude** | Altitude dive with arrival under 12 hours ago: HIGH. Altitude dive (300 m or higher): MEDIUM |
+| **Settings** | GF Low higher than GF High: CRITICAL. Aggressive GF (GF High above 90): MEDIUM. Very conservative GF: LOW. Helium lipid response flag: LOW |
+| **Planning limits** | No breathable gas at some depth, or a deco obligation too large to plan: CRITICAL |
 
 ---
 
@@ -324,16 +379,16 @@ Extreme-DECO-Planner-Android-Mobile-APP/
 │       │   │   │   ├── Constants.kt             Physical constants, gas densities, NOAA limits
 │       │   │   │   ├── Coefficients.kt          ZHL-16A / B / C tables, VPM-B parameters
 │       │   │   │   ├── UnitsAndPressure.kt      Pressure, altitude, salinity, unit conversion
-│       │   │   │   ├── TissuesAndBuhlmann.kt    Haldane, Schreiner, M-values, ceilings, GF, NDL
+│       │   │   │   ├── TissuesAndBuhlmann.kt    Haldane, Schreiner, M-values, ceilings, GF, NDL, surface interval estimate
 │       │   │   │   ├── GasCalculator.kt         MOD, END, EAD, density, Best Mix, ICD
-│       │   │   │   ├── OxygenAndConsumption.kt  CNS, OTU, gas use, safety checks
+│       │   │   │   ├── OxygenAndConsumption.kt  CNS, OTU, gas use, four-level safety alerts
 │       │   │   │   ├── DivePlannerEngine.kt     Schedule builder, multi-dive day, contingencies, CCR bailout
 │       │   │   │   └── Models.kt                Data classes and enums
 │       │   │   ├── data/PlannerRepository.kt    DataStore persistence
 │       │   │   ├── export/ExportManager.kt      PDF slate and CSV export
 │       │   │   └── ui/
 │       │   │       ├── screens/                 Settings, Planner, Gases, Charts
-│       │   │       ├── components/              Charts and shared controls
+│       │   │       ├── components/              Charts, shared controls, Surface Interval Calculator card
 │       │   │       ├── viewmodel/               PlannerViewModel
 │       │   │       └── theme/                   Colours, typography, theme
 │       │   ├── res/                             Icons, fonts, images, strings
@@ -361,7 +416,9 @@ Run the unit tests from Android Studio: right-click `app/src/test` and choose **
 - Model conservatism (ZHL-16C at least as conservative as ZHL-16A) and GF monotonicity
 - Residual nitrogen across a multi-dive day
 - Best Gas Mix for every stage, and cylinder sizing from SAC rate
-- The critical-errors-only policy (a standard dive has no alerts, a dangerous gas raises an error)
+- Recreational mode (under 40 m within NDL: EAN32, no trimix, no deco gases)
+- The four alert levels, including the CNS 80% single-dive warning and the new HIGH / MEDIUM checks
+- The ZHL-16C Surface Interval Calculator
 
 Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
 
@@ -385,7 +442,7 @@ All defaults can be changed in the **Settings** tab.
 ## Known Limitations
 
 - **VPM-B is experimental and approximate.** It is not a full implementation of Baker's VPM-B algorithm. It reuses the ZHL-16C tissue model and makes the tolerated supersaturation stricter, scaled by the conservatism setting. Do not treat its schedules as true VPM-B schedules. Use the Bühlmann models for real dive planning.
-- **Alerts show critical errors only.** Lower-level warnings such as END above your narcosis limit, ppO2 between your chosen limit and 1.60 bar, OTU, and ICD at user-chosen gas switches are not raised as alerts. Check these values yourself in the runtime table and summary.
+- **Surface Interval Calculator results are estimates.** The time-to-clear figure and the residual loads come from the ZHL-16C model only. Always follow your dive computer for repetitive dives.
 - Results can differ by about one minute per stop from other planners because of rounding and gas-switch handling.
 - The app has not yet been independently validated. Always cross-check with a second planner.
 
@@ -397,7 +454,8 @@ All defaults can be changed in the **Settings** tab.
 - [ ] APK signed with a permanent release key
 - [ ] Google Play release
 - [ ] Full VPM-B implementation
-- [ ] Optional warning level (END, ICD, OTU, chosen ppO2 limits)
+- [x] Four-level safety alerts (CRITICAL / HIGH / MEDIUM / LOW)
+- [x] Surface Interval Calculator (ZHL-16C)
 - [ ] Screenshots and a short demo video
 - [ ] Arabic language support
 - [ ] pSCR (passive semi-closed rebreather) mode
