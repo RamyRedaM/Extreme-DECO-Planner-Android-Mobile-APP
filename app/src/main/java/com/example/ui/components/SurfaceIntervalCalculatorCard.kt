@@ -79,10 +79,15 @@ fun SurfaceIntervalCalculatorCard(
         mutableStateOf(defaultNextDepthM.coerceIn(9.0, 60.0))
     }
 
-    val nextGas = remember(sourceResult, hasPrevDive, activeDiveIndex, dayResult) {
-        val targetRes = if (hasPrevDive) dayResult.diveResults.getOrNull(activeDiveIndex) else sourceResult
-        targetRes?.input?.gases?.firstOrNull { it.enabled && (it.role == GasRole.BOTTOM || it.role == GasRole.DILUENT) }
-            ?: Gas.fromPercent("si_ean32", 32, 0, GasRole.BOTTOM)
+    // Next dive gas: the NEXT dive's own planned bottom gas (not the current dive's), or a picked gas
+    val plannedNextGases: List<Gas>? = targetApplyDiveIdx?.let { dayResult.diveResults.getOrNull(it)?.input?.gases }
+    var gasChoice by remember(sourceDiveIdx, targetApplyDiveIdx) { mutableStateOf("planned") }
+    val nextGas = remember(plannedNextGases, nextDepthM, gasChoice, sourceResult.input.dive, sourceResult.env) {
+        when (gasChoice) {
+            "air" -> Gas.fromPercent("si_air", 21, 0, GasRole.BOTTOM)
+            "ean32" -> Gas.fromPercent("si_ean32", 32, 0, GasRole.BOTTOM)
+            else -> GasCalculator.defaultNextDiveGas(plannedNextGases, nextDepthM, sourceResult.input.dive, sourceResult.env)
+        }
     }
 
     val estimate = remember(sourceResult.endTissues, sourceResult.oxygen.endCnsPct, siMinutes, nextDepthM, nextGas, general) {
@@ -324,6 +329,33 @@ fun SurfaceIntervalCalculatorCard(
         }
 
         Spacer(Modifier.height(10.dp))
+
+        // Next dive gas picker
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Next Gas:",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val plannedLabel = if (plannedNextGases != null) {
+                "Planned · ${GasCalculator.defaultNextDiveGas(plannedNextGases, nextDepthM, sourceResult.input.dive, sourceResult.env).displayName}"
+            } else {
+                "Auto · ${GasCalculator.defaultNextDiveGas(null, nextDepthM, sourceResult.input.dive, sourceResult.env).displayName}"
+            }
+            listOf("planned" to plannedLabel, "air" to "Air", "ean32" to "EAN32").forEach { (key, label) ->
+                FilterChip(
+                    selected = gasChoice == key,
+                    onClick = { gasChoice = key },
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                    modifier = Modifier.testTag("si_gas_$key")
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
 
         // Next Dive Target Depth Adjuster + Apply / Add Dive Action
         Row(

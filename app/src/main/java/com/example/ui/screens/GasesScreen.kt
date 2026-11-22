@@ -221,11 +221,7 @@ private fun GasEditorCard(
     onUpdate: (Gas) -> Unit,
     onDelete: () -> Unit
 ) {
-    val evalDepth = if (gas.role == GasRole.DECO || gas.role == GasRole.BAILOUT) {
-        GasCalculator.effectiveSwitchModM(gas, dive.ppO2Deco, env)
-    } else {
-        maxDepthM
-    }
+    val evalDepth = GasCalculator.displayEvalDepthM(gas, maxDepthM, dive, env)
     val metrics = GasCalculator.gasMetrics(gas, evalDepth, env, dive)
 
     TelemetryCard(

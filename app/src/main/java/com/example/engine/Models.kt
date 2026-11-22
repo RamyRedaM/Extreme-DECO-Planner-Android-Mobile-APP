@@ -147,11 +147,18 @@ data class GeneralSettings(
     val gasSelectionMode: GasSelectionMode = GasSelectionMode.BEST_GAS_MIX
 ) {
     val effectiveSalinity: Double
-        get() = if (salinityPreset == SalinityPreset.CUSTOM || salinityPreset == SalinityPreset.RED_SEA) {
-            customSalinityKgM3
-        } else {
-            salinityPreset.densityKgM3
+        get() = when (salinityPreset) {
+            SalinityPreset.CUSTOM -> customSalinityKgM3
+            // Red Sea is editable within its realistic range; a stale out-of-range value falls back to 1030
+            SalinityPreset.RED_SEA ->
+                if (customSalinityKgM3 in RED_SEA_MIN_KGM3..RED_SEA_MAX_KGM3) customSalinityKgM3 else SalinityPreset.RED_SEA.densityKgM3
+            else -> salinityPreset.densityKgM3
         }
+
+    companion object {
+        const val RED_SEA_MIN_KGM3 = 1020.0
+        const val RED_SEA_MAX_KGM3 = 1040.0
+    }
 }
 
 data class DiveSettings(
@@ -361,6 +368,7 @@ enum class AlertLevel(val label: String, val priority: Int) {
 enum class AlertCode(val title: String) {
     PPO2_HIGH_BOTTOM("High Bottom ppO₂"),
     PPO2_HIGH_DECO("High Deco ppO₂"),
+    PPN2_HIGH_DECO("High Deco ppN₂"),
     HYPOXIC("Hypoxic Gas"),
     HYPOXIC_NO_TRAVEL("Missing Travel Gas"),
     END_HIGH("Narcosis / END"),

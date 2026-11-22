@@ -215,6 +215,14 @@ object DivePlannerEngine {
             } else {
                 appendSegment(SegmentType.DESCENT, 0.0, firstLevel.depthM, firstLevel.depthM / descentRate, firstLevelGas, null)
             }
+        } else if (isCcr && firstLevel.depthM > input.ccr.switchToHighDepthM + 1e-6 && input.ccr.switchToHighDepthM > 0.0) {
+            // CCR: low (descent) setpoint until the switch depth, then the bottom setpoint below it
+            val swD = input.ccr.switchToHighDepthM
+            appendSegment(SegmentType.DESCENT, 0.0, swD, swD / descentRate, firstLevelGas, input.ccr.setpointDescent)
+            appendSegment(
+                SegmentType.DESCENT, swD, firstLevel.depthM,
+                (firstLevel.depthM - swD) / descentRate, firstLevelGas, input.ccr.setpointBottom
+            )
         } else {
             val spDesc = activeSetpoint(firstLevel.depthM / 2.0, isDescent = true, isDeco = false)
             appendSegment(SegmentType.DESCENT, 0.0, firstLevel.depthM, firstLevel.depthM / descentRate, firstLevelGas, spDesc)
@@ -556,7 +564,16 @@ object DivePlannerEngine {
             surfaceIntervalMin = input.surfaceIntervalMin
         )
 
-        val rawConsumption = OxygenAndConsumption.computeGasConsumption(segments, input, env)
+        // Lost-gas reserve: replan once per deco gas with that gas lost, and record the most
+        // each remaining gas is used in any of those scenarios.
+        val lostGasMaxUsage: Map<String, Double> =
+            if (!isCcr && input.consumption.decoReserveRule == ReserveRuleDeco.LOST_GAS) {
+                lostGasWorstCaseUsage(input)
+            } else {
+                emptyMap()
+            }
+
+        val rawConsumption = OxygenAndConsumption.computeGasConsumption(segments, input, env, lostGasMaxUsage)
 
         // In Best GAS Mix mode, automatically scale tank count (1x, 2x, 3x... of 12L @ 200bar or user's chosen tank size)
         // for every gas according to the diver's Settings SAC/RMV & reserve rule so gas is always sufficient.
@@ -595,7 +612,7 @@ object DivePlannerEngine {
             } else {
                 timeline
             }
-            gasConsumption = OxygenAndConsumption.computeGasConsumption(finalSegments, finalInput, env)
+            gasConsumption = OxygenAndConsumption.computeGasConsumption(finalSegments, finalInput, env, lostGasMaxUsage)
         }
 
         val endSurfGf = TissuesAndBuhlmann.surfaceGfPct(tissues, env, coeffs)
@@ -645,6 +662,28 @@ object DivePlannerEngine {
      * automatically propagating 16-compartment N2/He tissue tensions, CNS 90-min decay,
      * and cumulative daily OTU across every dive in the day!
      */
+    /**
+     * For each enabled deco gas, plans the same dive with that gas lost and returns, per remaining gas,
+     * the highest usage (litres) seen across those scenarios.
+     */
+    fun lostGasWorstCaseUsage(input: DivePlanInput): Map<String, Double> {
+        val decoGases = input.gases.filter { it.enabled && (it.role == GasRole.DECO || it.role == GasRole.BAILOUT) }
+        if (decoGases.isEmpty()) return emptyMap()
+        val worst = mutableMapOf<String, Double>()
+        for (lost in decoGases) {
+            val scenario = input.copy(
+                gases = input.gases.map { if (it.id == lost.id) it.copy(enabled = false) else it },
+                consumption = input.consumption.copy(decoReserveRule = ReserveRuleDeco.MULTIPLIER_1_5)
+            )
+            val res = planDive(scenario, includeContingencies = false, recordTimeline = false)
+            if (res.abortedReason != null) continue
+            for (gc in res.gasConsumption) {
+                worst[gc.gas.id] = max(worst[gc.gas.id] ?: 0.0, gc.usedLitres)
+            }
+        }
+        return worst
+    }
+
     fun planMultiDiveDay(
         baseInput: DivePlanInput,
         dives: List<MultiDiveEntry>,

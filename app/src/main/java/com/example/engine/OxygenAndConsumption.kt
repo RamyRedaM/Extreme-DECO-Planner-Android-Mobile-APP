@@ -121,7 +121,8 @@ object OxygenAndConsumption {
     fun computeGasConsumption(
         segments: List<Segment>,
         input: DivePlanInput,
-        env: Environment
+        env: Environment,
+        lostGasMaxUsageById: Map<String, Double> = emptyMap()
     ): List<GasConsumptionResult> {
         val usedByGasId = linkedMapOf<String, Double>()
         val gasById = linkedMapOf<String, Gas>()
@@ -155,18 +156,16 @@ object OxygenAndConsumption {
             usedByGasId[seg.gas.id] = (usedByGasId[seg.gas.id] ?: 0.0) + volLitres
         }
 
-        // Rock-bottom calculation for bottom gas: 2 divers at stress RMV from max depth to first switch + 1 min problem solving
+        // Rock-bottom for the BOTTOM gas: 2 divers at stress RMV, 1 min problem solving at max depth,
+        // then ascent from max depth to the first gas switch ON THE ASCENT (not a descent/travel switch).
         val maxDepthM = segments.maxOfOrNull { max(it.fromDepthM, it.toDepthM) } ?: 0.0
-        val firstSwitchDepth = segments.firstOrNull { it.type == SegmentType.SWITCH }?.fromDepthM ?: 0.0
-        val ascentDist = (maxDepthM - firstSwitchDepth).coerceAtLeast(0.0)
-        val ascentMin = ascentDist / input.dive.ascentRateToFirstStopMMin.coerceAtLeast(1.0)
-        val pMax = UnitsAndPressure.ambientPressure(maxDepthM, env)
-        val pSwitch = UnitsAndPressure.ambientPressure(firstSwitchDepth, env)
-        val stressRmv2Divers = input.consumption.bottomRmvLMin * input.consumption.stressFactor * 2.0
-        val rockBottomReserve = stressRmv2Divers * (
-            (pMax / env.pSurfaceBar) * 1.0 +
-                (((pMax + pSwitch) / 2.0) / env.pSurfaceBar) * ascentMin
-            )
+        val lastBottomIdx = segments.indexOfLast { it.type == SegmentType.LEVEL }
+            .takeIf { it >= 0 } ?: segments.indexOfFirst { max(it.fromDepthM, it.toDepthM) >= maxDepthM - 1e-6 }
+        val rockBottomGasId: String? = segments.getOrNull(lastBottomIdx)?.gas?.id
+        val firstAscentSwitchDepth = if (lastBottomIdx >= 0) {
+            segments.drop(lastBottomIdx + 1).firstOrNull { it.gas.id != rockBottomGasId }?.fromDepthM ?: 0.0
+        } else 0.0
+        val rockBottomReserve = rockBottomReserveLitres(maxDepthM, firstAscentSwitchDepth, input, env)
 
         return usedByGasId.map { (gasId, usedL) ->
             val gas = gasById[gasId]!!
@@ -174,14 +173,20 @@ object OxygenAndConsumption {
             val reserveL = if (isDeco) {
                 when (input.consumption.decoReserveRule) {
                     ReserveRuleDeco.MULTIPLIER_1_5 -> usedL * 0.5
-                    ReserveRuleDeco.LOST_GAS -> usedL * (input.consumption.stressFactor - 1.0).coerceAtLeast(0.5)
+                    // Lost-gas: carry the most this gas is needed in any plan where ONE other deco gas
+                    // is lost, times the stress factor.
+                    ReserveRuleDeco.LOST_GAS -> {
+                        val worstCase = max(usedL, lostGasMaxUsageById[gasId] ?: usedL)
+                        (worstCase * input.consumption.stressFactor.coerceAtLeast(1.0) - usedL).coerceAtLeast(0.0)
+                    }
                 }
             } else {
                 when (input.consumption.bottomReserveRule) {
                     ReserveRuleBottom.THIRDS -> usedL * 0.5
                     ReserveRuleBottom.QUARTERS -> usedL * (1.0 / 3.0)
                     ReserveRuleBottom.HALF -> usedL * 1.0
-                    ReserveRuleBottom.ROCK_BOTTOM -> max(rockBottomReserve, usedL * 0.5)
+                    ReserveRuleBottom.ROCK_BOTTOM ->
+                        if (gasId == rockBottomGasId) max(rockBottomReserve, usedL * 0.5) else usedL * 0.5
                 }
             }
             val totalReq = usedL + reserveL
@@ -206,6 +211,22 @@ object OxygenAndConsumption {
                 isSufficient = availableL >= totalReq - 1e-3
             )
         }
+    }
+
+    /**
+     * Rock-bottom gas (surface litres): two divers breathing at stress RMV for 1 min at max depth,
+     * then ascending at the ascent rate to the first ascent gas switch (surface if none).
+     */
+    fun rockBottomReserveLitres(maxDepthM: Double, switchDepthM: Double, input: DivePlanInput, env: Environment): Double {
+        val ascentDist = (maxDepthM - switchDepthM).coerceAtLeast(0.0)
+        val ascentMin = ascentDist / input.dive.ascentRateToFirstStopMMin.coerceAtLeast(1.0)
+        val pMax = UnitsAndPressure.ambientPressure(maxDepthM, env)
+        val pSwitch = UnitsAndPressure.ambientPressure(switchDepthM.coerceAtMost(maxDepthM), env)
+        val stressRmv2Divers = input.consumption.bottomRmvLMin * input.consumption.stressFactor * 2.0
+        return stressRmv2Divers * (
+            (pMax / env.pSurfaceBar) * 1.0 +
+                (((pMax + pSwitch) / 2.0) / env.pSurfaceBar) * ascentMin
+            )
     }
 
     // ---- 4-Tier Categorized Safety Checks: CRITICAL / HIGH / MEDIUM / LOW ----
@@ -399,6 +420,7 @@ object OxygenAndConsumption {
         var highIcdN2 = false
         var medIcdFifths = false
         var lowLipid = false
+        var medPpN2Deco = false
 
         var continuousHighO2Min = 0.0
         var maxContinuousHighO2Min = 0.0
@@ -602,6 +624,17 @@ object OxygenAndConsumption {
                 }
             }
             prevGas = seg.gas
+
+            // 7b. Nitrogen on deco gases above the PPN2 Max Deco limit (MEDIUM)
+            if (!seg.isCcr && isDecoPhase && !medPpN2Deco && seg.ppN2End > dive.ppN2MaxDeco + 0.02) {
+                medPpN2Deco = true
+                list += PlanAlert(
+                    AlertLevel.MEDIUM,
+                    AlertCode.PPN2_HIGH_DECO,
+                    "Deco ppN₂ ${"%.2f".format(seg.ppN2End)} bar on ${seg.gas.displayName} at ${maxSegDepth.roundToInt()} m exceeds your PPN2 Max Deco (${"%.2f".format(dive.ppN2MaxDeco)} bar). Consider a richer or helium-based deco gas.",
+                    idx
+                )
+            }
 
             // 8. Lipid tissue advisory (LOW, optional setting)
             if (alerts.considerLipidResponse && seg.gas.he > 0.15 && !lowLipid) {

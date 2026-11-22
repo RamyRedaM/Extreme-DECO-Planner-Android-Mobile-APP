@@ -156,18 +156,20 @@ fun SetupScreen(
                         FilterChip(
                             selected = g.salinityPreset == sp,
                             onClick = { viewModel.updateGeneral { it.copy(salinityPreset = sp, customSalinityKgM3 = sp.densityKgM3) } },
-                            label = { Text(sp.label.substringBefore(" ")) }
+                            label = { Text(sp.label.substringBefore(" (")) }
                         )
                     }
                 }
                 if (g.salinityPreset == SalinityPreset.CUSTOM || g.salinityPreset == SalinityPreset.RED_SEA) {
+                    val isRedSea = g.salinityPreset == SalinityPreset.RED_SEA
                     NumberStepperRow(
-                        label = "Water Density",
+                        label = if (isRedSea) "Red Sea Water Density" else "Water Density",
                         value = g.customSalinityKgM3,
-                        step = 5.0,
-                        min = 995.0,
-                        max = 1050.0,
+                        step = if (isRedSea) 1.0 else 5.0,
+                        min = if (isRedSea) GeneralSettings.RED_SEA_MIN_KGM3 else 995.0,
+                        max = if (isRedSea) GeneralSettings.RED_SEA_MAX_KGM3 else 1050.0,
                         unit = "kg/m³",
+                        subtitle = "Used in calculations: ${g.effectiveSalinity.roundToInt()} kg/m³",
                         testTag = "custom_salinity",
                         onValueChange = { v -> viewModel.updateGeneral { it.copy(customSalinityKgM3 = v) } }
                     )

@@ -3,6 +3,7 @@ package com.example.engine
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -160,7 +161,51 @@ object GasCalculator {
             val nextHe = (candidate.he + 0.01).coerceAtMost(1.0 - candidate.o2)
             candidate = candidate.copy(he = (nextHe * 100.0).roundToInt() / 100.0)
         }
-        return candidate
+        return practicalHelium(candidate, depth, ppN2Limit, dive, env)
+    }
+
+    /**
+     * Depth at which a gas card's END, density and ppO2 are shown:
+     * deco/bailout gases at their switch depth, travel gases at the deepest depth they are actually
+     * breathed (their MOD for PPO2 Bottom, capped by the dive's max depth), bottom/diluent gases at max depth.
+     */
+    fun displayEvalDepthM(gas: Gas, maxDepthM: Double, dive: DiveSettings, env: Environment): Double = when (gas.role) {
+        GasRole.DECO, GasRole.BAILOUT -> effectiveSwitchModM(gas, dive.ppO2Deco, env)
+        GasRole.TRAVEL -> min(maxDepthM, gas.modOverrideM ?: modDisplayM(gas, dive.ppO2Bottom, env)).coerceAtLeast(0.0)
+        else -> maxDepthM
+    }
+
+    /**
+     * Gas used for the "next dive" NDL in the Surface Interval Calculator: the next dive's own bottom gas
+     * when it is planned, otherwise EAN32 if it is within PPO2 Bottom at that depth, else Air.
+     */
+    fun defaultNextDiveGas(plannedNextDiveGases: List<Gas>?, nextDepthM: Double, dive: DiveSettings, env: Environment): Gas {
+        plannedNextDiveGases
+            ?.firstOrNull { it.enabled && (it.role == GasRole.BOTTOM || it.role == GasRole.DILUENT) }
+            ?.let { return it }
+        val ean32 = Gas.fromPercent("si_ean32", 32, 0, GasRole.BOTTOM)
+        return if (modExactM(ean32, dive.ppO2Bottom, env) >= nextDepthM) ean32
+        else Gas.fromPercent("si_air", 21, 0, GasRole.BOTTOM)
+    }
+
+    /** Smallest helium fraction worth blending; below this a trimix becomes plain nitrox. */
+    const val MIN_PRACTICAL_HE = 0.10
+
+    /**
+     * Avoids impractical fills such as "TX 34/1": helium between 0% and 10% is dropped (plain nitrox)
+     * when the nitrox still meets the END, ppN2 and density limits at this depth; otherwise it is
+     * raised to 10%, which only lowers END and density.
+     */
+    fun practicalHelium(gas: Gas, depthM: Double, ppN2Limit: Double, dive: DiveSettings, env: Environment): Gas {
+        if (gas.he <= 0.0 || gas.he >= MIN_PRACTICAL_HE - 1e-9) return gas
+        val nitrox = gas.copy(he = 0.0)
+        val pAmb = UnitsAndPressure.ambientPressure(depthM, env)
+        val nitroxOk = endM(nitrox, depthM, env, dive.o2Narcotic) <= dive.maxEndM + 1e-6 &&
+            nitrox.n2 * pAmb <= ppN2Limit + 1e-6 &&
+            densityGL(nitrox, depthM, env) <= dive.maxGasDensityGL + 1e-6
+        if (nitroxOk) return nitrox
+        val he = MIN_PRACTICAL_HE.coerceAtMost(1.0 - gas.o2)
+        return gas.copy(he = (he * 100.0).roundToInt() / 100.0)
     }
 
     /**
