@@ -16,6 +16,8 @@ final class ParityTests: XCTestCase {
         "S7": "57.00|13.00|12|9:2.00:EAN32,6:3.00:O2 100%,3:8.00:O2 100%|26.05|70.94|63.4|EAN32=5593/4800,O2 100%=392/1400|CRITICAL:GAS_VOLUME,MEDIUM:ALTITUDE_DIVING",
         "S8": "80.33|43.00|27|33:1.00:EAN32,21:1.00:EAN50,18:2.00:EAN50,15:3.00:EAN50,12:4.00:EAN50,9:7.00:EAN50,6:9.00:O2 100%,3:16.00:O2 100%|60.79|107.52|67.1|EAN32=373/2200,TX 18/45=5641/5568,EAN50=949/2200,O2 100%=822/1400|CRITICAL:GAS_VOLUME,HIGH:DENSITY_HIGH,HIGH:ICD_N2,HIGH:NO_O2_BREAKS,MEDIUM:END_HIGH,MEDIUM:ICD_FIFTHS,MEDIUM:LONG_TTS_EXPOSURE,LOW:CNS",
         "S9a": "167.73|121.00|42|48:1.00:TX 23/37,39:1.00:TX 32/46,33:2.00:TX 32/46,30:3.00:TX 32/46,27:3.00:TX 32/46,24:5.00:TX 32/46,21:4.00:EAN50,18:5.00:EAN50,15:7.00:EAN50,12:10.00:EAN50,9:17.00:EAN50,6:21.00:O2 100%,3:42.00:O2 100%|140.27|235.40|68.1|TX 23/37=459/2400,TX 15/67=8736/9600,TX 32/46=1396/2400,EAN50=2278/2400,O2 100%=2006/2400|CRITICAL:CNS,HIGH:ICD_N2,HIGH:NO_O2_BREAKS,HIGH:LONG_TTS_EXPOSURE,MEDIUM:GF_EXTREME,MEDIUM:ICD_FIFTHS,LOW:GAS_ALERT_LIMITS,LOW:GAS_ALERT_LIMITS,LOW:GAS_ALERT_LIMITS",
+        "BM70": "travel:TX 26/28:-,bottom:TX 17/59:-,deco:TX 32/41:39.0,deco:EAN50:21.0,deco:O2 100%:6.0",
+        "SI": "53.36|13|17.29|39.84|20.62|20.58|375.0",
         "S9b": "28.44|0.00|0||86.53|41.12|52.0|EAN39=2764/4800|HIGH:CNS,HIGH:SHORT_SURFACE_INTERVAL"
     ]
 
@@ -99,7 +101,7 @@ final class ParityTests: XCTestCase {
     }
 
     func testScenariosMatchKotlinEngine() {
-        for (id, r) in Self.scenarios() {
+        for (id, r) in Self.scenarios() where !["BM70", "SI"].contains(id) {
             let line = Self.fp(r)
             print("DIAG SWIFT PARITY|\(id)|\(line)")
             guard let expected = Self.kotlinReference[id] else { XCTFail("no reference for \(id)"); continue }
@@ -107,21 +109,24 @@ final class ParityTests: XCTestCase {
         }
     }
 
-    /// Printed for comparison with the Kotlin BM70/SI lines (kept as diagnostics; see ios/README.md).
-    func testBestMixAndSurfaceIntervalDiagnostics() {
+    /// Best GAS Mix at 70 m and the Surface Interval calculator after S2 must match the Kotlin BM70/SI lines.
+    func testBestMixAndSurfaceIntervalMatchKotlin() {
         var lv = DivePlanInput()
         lv.levels = [DiveLevel("x", 70, 20)]
         let bm = GasCalculator.recommendBestMix(maxDepthM: 70, general: GeneralSettings(), dive: DiveSettings(),
                                                 existingGases: [], alerts: AlertSettings(), levels: lv.levels,
                                                 previousTissues: nil, surfaceIntervalMin: 0, consumption: ConsumptionSettings())
-        print("DIAG SWIFT PARITY|BM70|" + bm.plannerGases.map { "\($0.role.rawValue):\($0.displayName):\($0.modOverrideM.map { String($0) } ?? "-")" }.joined(separator: ","))
-        XCTAssertFalse(bm.plannerGases.isEmpty)
+        let bmLine = bm.plannerGases.map { "\($0.role.rawValue):\($0.displayName):\($0.modOverrideM.map { String($0) } ?? "-")" }.joined(separator: ",")
+        print("DIAG SWIFT PARITY|BM70|" + bmLine)
+        XCTAssertEqual(bmLine, Self.kotlinReference["BM70"])
         let s2 = Self.scenarios().first { $0.0 == "S2" }!.1
         let si = TissuesAndBuhlmann.estimateSurfaceInterval(endTissues: s2.endTissues, endCnsPct: s2.oxygen.endCnsPct, surfaceIntervalMin: 60,
                                                             env: s2.env, nextDiveDepthM: 25, nextDiveGas: Gas.fromPercent("x", 32, 0, .bottom),
                                                             general: GeneralSettings())
-        print("DIAG SWIFT PARITY|SI|" + [fmt(si.remainingExcessInertPct, 2), String(si.leadingCompartmentNumber), fmt(si.surfaceGfAfterPct, 2),
-                                         fmt(si.cnsAfterPct, 2), fmt(si.nextDiveNdlMin, 2), fmt(si.freshNdlMin, 2), String(si.estimatedCleanTimeMin)].joined(separator: "|"))
+        let siLine = [fmt(si.remainingExcessInertPct, 2), String(si.leadingCompartmentNumber), fmt(si.surfaceGfAfterPct, 2),
+                                         fmt(si.cnsAfterPct, 2), fmt(si.nextDiveNdlMin, 2), fmt(si.freshNdlMin, 2), String(si.estimatedCleanTimeMin)].joined(separator: "|")
+        print("DIAG SWIFT PARITY|SI|" + siLine)
+        assertParity("SI", siLine, Self.kotlinReference["SI"]!)
         XCTAssertLessThan(si.surfaceGfAfterPct, si.surfaceGfBeforePct)
     }
 }
