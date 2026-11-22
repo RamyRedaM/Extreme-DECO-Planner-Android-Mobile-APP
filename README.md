@@ -455,9 +455,8 @@ All defaults can be changed in the **Settings** tab.
 - [ ] Google Play release
 - [ ] Full VPM-B implementation
 - [x] Four-level safety alerts (CRITICAL / HIGH / MEDIUM / LOW)
-- [x] Surface Interval Calculator (ZHL-16C)
+- [x] Surface Interval Calculator (based on ZHL-16C)
 - [ ] Screenshots and a short demo video
-- [ ] Arabic language support
 - [ ] pSCR (passive semi-closed rebreather) mode
 
 ---
