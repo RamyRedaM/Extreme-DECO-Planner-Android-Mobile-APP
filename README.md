@@ -5,12 +5,14 @@
 <h1 align="center">Extreme DECO Planner</h1>
 
 <p align="center">
-  <strong>A technical scuba diving decompression planner for Android.</strong><br>
+  <strong>A technical scuba diving decompression planner for Android and iPhone.</strong><br>
   Bühlmann ZHL-16A / B / C with Gradient Factors, Best Gas Mix selection, CCR with bailout, multi-dive days, interactive charts and PDF / CSV export. Everything runs on the phone, offline.
 </p>
 
 <p align="center">
   <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2.apk"><strong>⬇ Download the APK (v1.27.2)</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2-unsigned.ipa"><strong>⬇ iPhone .ipa (v1.27.2, sideload)</strong></a>
 </p>
 
 <p align="center">
@@ -40,6 +42,7 @@
 
 - [Overview](#overview)
 - [Download](#download)
+- [iPhone (iOS)](#iphone-ios)
 - [Features](#features)
 - [App Screens](#app-screens)
 - [Screenshots](#screenshots)
@@ -94,6 +97,22 @@ All versions and release notes are on the [Releases page](https://github.com/Ram
 > This is a **test build** signed with a temporary debug key. A later build signed with a different key cannot install over it as an update: uninstall the old version first. Your saved plans are removed when you uninstall.
 
 You can also [build the app from source](#build-from-source).
+
+---
+
+## iPhone (iOS)
+
+The iPhone version is a native SwiftUI app in [`ios/`](ios/), with the same four tabs and features as Android. It is a separate code base: the Swift engine is a line-by-line port of the Kotlin engine, and parity tests check on every build that both engines give the same schedules, CNS, OTU, gas figures and alerts. See [ios/README.md](ios/README.md) for how the two code bases are kept in step.
+
+**Test build: [Extreme-DECO-Planner-v1.27.2-unsigned.ipa](https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2-unsigned.ipa)** (iOS 16 or later)
+
+Apple only runs signed apps, so the .ipa has to be signed with your own Apple ID when you install it:
+
+1. Install [Sideloadly](https://sideloadly.io) or [AltStore](https://altstore.io) on a Windows PC or Mac.
+2. Connect the iPhone by cable, drop the .ipa into the tool and sign in with your Apple ID.
+3. On the iPhone, open **Settings → General → VPN & Device Management** and trust your Apple ID, then turn on **Settings → Privacy & Security → Developer Mode**.
+
+With a free Apple ID the app must be re-signed every 7 days. A TestFlight link (no sideloading, needs an Apple Developer account) will follow.
 
 ---
 
@@ -524,6 +543,8 @@ All defaults can be changed in the **Settings** tab.
 ## Roadmap
 
 - [x] Test APK on GitHub Releases (v1.27.2)
+- [x] Native iPhone app (SwiftUI) with engine parity tests
+- [ ] iPhone TestFlight / App Store release
 - [ ] APK signed with a permanent release key
 - [ ] Google Play release
 - [ ] Full VPM-B implementation
