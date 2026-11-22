@@ -1,0 +1,119 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Attach the unsigned .ipa to the Releases page"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/build-ios.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Engine tests (Swift Package)
+        id: enginetests
+        continue-on-error: true
+        working-directory: ios/DecoEngine
+        run: swift test 2>&1 | tee /tmp/swift-test.log; exit ${PIPESTATUS[0]}
+
+      - name: Report engine test results
+        if: always()
+        run: |
+          python3 - << 'PY'
+          import re
+          log = open("/tmp/swift-test.log", errors="replace").read() if __import__("os").path.exists("/tmp/swift-test.log") else ""
+          errs = [l for l in log.splitlines() if ("error:" in l or "XCTAssert" in l or "failed" in l.lower()) and "warning" not in l][:40]
+          for i in range(0, len(errs), 6):
+              print("::error title=engine::" + " %0A".join(e.strip()[:400] for e in errs[i:i+6]))
+          diag = [l[5:] for l in log.splitlines() if l.startswith("DIAG ")]
+          chunk = ""
+          for d in diag:
+              chunk += d + " %0A"
+          if chunk: print("::notice title=diag::" + chunk[:6000])
+          m = re.findall(r"Executed (\d+) tests?, with (\d+) failures?", log)
+          print("::notice title=engine tests::" + (f"{m[-1][0]} tests, {m[-1][1]} failed" if m else "no summary (build error?)"))
+          PY
+
+      - name: Stop if engine tests failed
+        if: steps.enginetests.outcome == 'failure'
+        run: exit 1
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios/ExtremeDecoPlanner
+        run: xcodegen generate
+
+      - name: Build app (iOS Simulator)
+        id: simbuild
+        continue-on-error: true
+        working-directory: ios/ExtremeDecoPlanner
+        run: |
+          set -o pipefail
+          xcodebuild -project ExtremeDecoPlanner.xcodeproj -scheme ExtremeDecoPlanner \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug build CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcb.log | grep -E "error:|warning: unre|BUILD" || true
+          exit ${PIPESTATUS[0]}
+
+      - name: Report app build errors
+        if: always()
+        run: |
+          python3 - << 'PY'
+          import os
+          p = "/tmp/xcb.log"
+          if os.path.exists(p):
+              errs = [l for l in open(p, errors="replace").read().splitlines() if " error:" in l]
+              seen = []
+              for e in errs:
+                  e = e.split("ios/ExtremeDecoPlanner/")[-1].strip()[:400]
+                  if e not in seen: seen.append(e)
+              for i in range(0, min(len(seen), 54), 6):
+                  print("::error title=app::" + " %0A".join(seen[i:i+6]))
+              print(f"::notice title=app build::{len(seen)} unique errors")
+          PY
+
+      - name: Stop if app build failed
+        if: steps.simbuild.outcome == 'failure'
+        run: exit 1
+
+      - name: Build unsigned device .ipa
+        working-directory: ios/ExtremeDecoPlanner
+        run: |
+          set -o pipefail
+          xcodebuild -project ExtremeDecoPlanner.xcodeproj -scheme ExtremeDecoPlanner \
+            -sdk iphoneos -destination 'generic/platform=iOS' -configuration Release \
+            -derivedDataPath build build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -5
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          mkdir -p Payload && cp -R "$APP" Payload/
+          VERSION=$(grep -E "MARKETING_VERSION" project.yml | head -1 | sed -E 's/.*: *"?([0-9.]+)"?/\1/')
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          zip -qr "Extreme-DECO-Planner-v${VERSION}-unsigned.ipa" Payload
+
+      - name: Upload .ipa as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Extreme-DECO-Planner-iOS-v${{ env.VERSION }}
+          path: ios/ExtremeDecoPlanner/Extreme-DECO-Planner-v${{ env.VERSION }}-unsigned.ipa
+
+      - name: Attach .ipa to the release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          files: ios/ExtremeDecoPlanner/Extreme-DECO-Planner-v${{ env.VERSION }}-unsigned.ipa

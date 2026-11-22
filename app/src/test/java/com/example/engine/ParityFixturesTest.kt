@@ -61,11 +61,11 @@ class ParityFixturesTest {
 
     @Test
     fun printParityFixtures() {
-        scenarios().forEach { (id, r) -> println("DIAG " + fp(id, r)) }
         val bm = GasCalculator.recommendBestMix(70.0, GeneralSettings(), DiveSettings(), levels = listOf(DiveLevel("x", 70.0, 20.0)))
         println("DIAG PARITY|BM70|" + bm.plannerGases.joinToString(",") { "${it.role.name}:${it.displayName}:${it.modOverrideM ?: "-"}" })
         val s2 = scenarios().first { it.first == "S2" }.second
         val si = TissuesAndBuhlmann.estimateSurfaceInterval(s2.endTissues, s2.oxygen.endCnsPct, 60.0, s2.env, 25.0, Gas.fromPercent("x", 32, 0, GasRole.BOTTOM), GeneralSettings())
         println("DIAG PARITY|SI|" + listOf("%.2f".format(java.util.Locale.US, si.remainingExcessInertPct), si.leadingCompartmentNumber, "%.2f".format(java.util.Locale.US, si.surfaceGfAfterPct), "%.2f".format(java.util.Locale.US, si.cnsAfterPct), "%.2f".format(java.util.Locale.US, si.nextDiveNdlMin), "%.2f".format(java.util.Locale.US, si.freshNdlMin), si.estimatedCleanTimeMin).joinToString("|"))
+        scenarios().forEach { (id, r) -> println("DIAG " + fp(id, r)) }
     }
 }

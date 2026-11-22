@@ -1,0 +1,43 @@
+name: ExtremeDecoPlanner
+options:
+  bundleIdPrefix: com.ramyreda
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  DecoEngine:
+    path: ../DecoEngine
+settings:
+  base:
+    MARKETING_VERSION: "1.27.2"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""
+targets:
+  ExtremeDecoPlanner:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+    dependencies:
+      - package: DecoEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ramyreda.extremedecoplanner
+        PRODUCT_NAME: ExtremeDecoPlanner
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Extreme DECO"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.sports
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        CODE_SIGN_STYLE: Automatic
+schemes:
+  ExtremeDecoPlanner:
+    build:
+      targets:
+        ExtremeDecoPlanner: all
