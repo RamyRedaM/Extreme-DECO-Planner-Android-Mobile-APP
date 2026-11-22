@@ -25,7 +25,6 @@ class GasSufficiencyConsistencyTest {
             " || alerts: " + res.alerts.joinToString(", ") { "${it.level}/${it.code}" }
 
     private fun assertConsistent(tag: String, res: DivePlanResult) {
-        println(describe(tag, res))
         res.gasConsumption.filter { !it.isSufficient }.forEach { gc ->
             assertTrue(
                 "$tag: ${gc.gas.displayName} is insufficient but no CRITICAL GAS_VOLUME alert",

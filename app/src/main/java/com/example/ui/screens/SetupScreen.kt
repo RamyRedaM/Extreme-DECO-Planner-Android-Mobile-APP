@@ -391,15 +391,66 @@ fun SetupScreen(
             }
         }
 
-        // 7. Critical Safety Threshold
+        // 7. Safety Alert Thresholds (CRITICAL / HIGH / MEDIUM / LOW)
         item {
             CollapsibleSection(
-                title = "Critical Safety Threshold",
-                subtitle = "Critical CNS limit ${a.cnsErrorPct.roundToInt()}% · Alerts show critical errors only",
+                title = "Safety Alert Thresholds",
+                subtitle = "4 levels: Critical · High · Medium · Low · CNS ${a.cnsWarnPct.roundToInt()}/${a.cnsErrorPct.roundToInt()}% · OTU ${a.otuWarnPerDive.roundToInt()}",
                 testTag = "section_alerts"
             ) {
-                NumberStepperRow("Critical CNS Error Limit", a.cnsErrorPct, 5.0, 70.0, 150.0, "%", 0, testTag = "alert_cns_err") { v ->
-                    viewModel.updateAlerts { it.copy(cnsErrorPct = v) }
+                Text(
+                    text = "Every plan is checked against more than 30 safety rules. Alerts are colour-coded: Critical (red) = unsafe, change the plan · High (orange) = a limit is exceeded · Medium (yellow) = review · Low (gray) = advisory.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                NumberStepperRow(
+                    "CNS Warning Limit", a.cnsWarnPct, 5.0, 30.0, 100.0, "%", 0,
+                    subtitle = "HIGH (orange) alert above this CNS %",
+                    testTag = "alert_cns_warn"
+                ) { v -> viewModel.updateAlerts { it.copy(cnsWarnPct = v.coerceAtMost(it.cnsErrorPct)) } }
+                NumberStepperRow(
+                    "CNS Critical Limit", a.cnsErrorPct, 5.0, 70.0, 150.0, "%", 0,
+                    subtitle = "CRITICAL (red) alert above this CNS %",
+                    testTag = "alert_cns_err"
+                ) { v -> viewModel.updateAlerts { it.copy(cnsErrorPct = v.coerceAtLeast(it.cnsWarnPct)) } }
+                NumberStepperRow(
+                    "OTU Limit per Dive", a.otuWarnPerDive, 25.0, 100.0, 850.0, "OTU", 0,
+                    subtitle = "HIGH alert above this pulmonary oxygen dose (daily limit 850)",
+                    testTag = "alert_otu"
+                ) { v -> viewModel.updateAlerts { it.copy(otuWarnPerDive = v) } }
+                NumberStepperRow(
+                    "ICD Max ΔppN₂ at Switch", a.icdDeltaPpN2Max, 0.05, 0.1, 1.5, "bar", 2,
+                    subtitle = "HIGH alert if a gas switch raises ppN₂ by more than this",
+                    testTag = "alert_icd"
+                ) { v -> viewModel.updateAlerts { it.copy(icdDeltaPpN2Max = v) } }
+                SwitchSettingRow(
+                    label = "ICD Rule of Fifths",
+                    subtitle = "MEDIUM alert if N₂ rises more than 1/5 of the helium drop",
+                    checked = a.icdRuleOfFifths,
+                    testTag = "alert_fifths"
+                ) { on -> viewModel.updateAlerts { it.copy(icdRuleOfFifths = on) } }
+                SwitchSettingRow(
+                    label = "Consider Helium Lipid Response",
+                    subtitle = "LOW advisory on helium mixes",
+                    checked = a.considerLipidResponse,
+                    testTag = "alert_lipid"
+                ) { on -> viewModel.updateAlerts { it.copy(considerLipidResponse = on) } }
+                Text(
+                    text = "Gas budget alerts (LOW) when a gas uses more than:",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                NumberStepperRow("Bottom / Travel Mix", a.bottomMixMaxLitres, 200.0, 400.0, 20000.0, "L", 0, testTag = "alert_bottom_l") { v ->
+                    viewModel.updateAlerts { it.copy(bottomMixMaxLitres = v) }
+                }
+                NumberStepperRow("Deco Mix up to 49% O₂", a.decoMixUpTo49MaxLitres, 200.0, 200.0, 10000.0, "L", 0, testTag = "alert_deco49_l") { v ->
+                    viewModel.updateAlerts { it.copy(decoMixUpTo49MaxLitres = v) }
+                }
+                NumberStepperRow("Deco Mix 50 to 99% O₂", a.decoMix50To99MaxLitres, 200.0, 200.0, 10000.0, "L", 0, testTag = "alert_deco99_l") { v ->
+                    viewModel.updateAlerts { it.copy(decoMix50To99MaxLitres = v) }
+                }
+                NumberStepperRow("Deco Oxygen", a.decoO2MaxLitres, 200.0, 200.0, 10000.0, "L", 0, testTag = "alert_o2_l") { v ->
+                    viewModel.updateAlerts { it.copy(decoO2MaxLitres = v) }
                 }
             }
         }

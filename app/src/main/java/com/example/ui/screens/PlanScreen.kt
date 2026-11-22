@@ -107,7 +107,10 @@ fun PlanScreen(
                     if (result != null) {
                         PlanStatusPill(
                             highestLevel = result.highestAlertLevel,
-                            alertCount = result.alerts.size
+                            // Count only the alerts at the highest severity shown on the pill
+                            alertCount = result.highestAlertLevel?.let { top ->
+                                result.alerts.count { it.level == top }.coerceAtLeast(1)
+                            } ?: 0
                         )
                     }
                 }

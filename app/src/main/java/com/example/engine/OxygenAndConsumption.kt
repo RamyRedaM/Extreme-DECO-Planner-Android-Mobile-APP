@@ -861,7 +861,7 @@ object OxygenAndConsumption {
                     list += PlanAlert(
                         AlertLevel.LOW,
                         AlertCode.GAS_ALERT_LIMITS,
-                        "${gc.gas.displayName} consumption (${gc.usedLitres.roundToInt()} L) exceeds alert budget (${budgetLimit.roundToInt()} L)."
+                        "${gc.gas.displayName} uses ${gc.usedLitres.roundToInt()} L, above your ${budgetLimit.roundToInt()} L gas budget alert (Settings › Safety Alert Thresholds). Cylinders hold ${gc.availableLitres.roundToInt()} L, so the plan has enough gas."
                     )
                 }
             }
