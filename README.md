@@ -409,7 +409,7 @@ Never commit keystores or passwords to the repository.
 The workflow [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml) builds the APK on GitHub's servers, with no local setup needed:
 
 1. On GitHub, open **Actions › Build APK › Run workflow** (on the `main` branch).
-2. The workflow builds a debug-signed APK with JDK 17 and Gradle 9.3.1.
+2. The workflow runs all unit tests first. If any test fails, nothing is published. It then builds a debug-signed APK with JDK 21 and Gradle 9.3.1.
 3. It publishes the APK as a pre-release named after `versionName`, for example `v1.27.2`, and also keeps it as a downloadable build artifact.
 
 Before each new public build, raise `versionCode` and `versionName` in `app/build.gradle.kts`. Otherwise the new APK replaces the file in the existing release, and Android will not see it as an update.
