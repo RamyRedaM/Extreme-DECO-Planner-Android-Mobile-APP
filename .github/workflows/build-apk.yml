@@ -2,6 +2,11 @@ name: Build APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the APK on the Releases page"
+        type: boolean
+        default: true
   push:
     tags:
       - "v*"
@@ -34,6 +39,36 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Run unit tests
+        id: tests
+        continue-on-error: true
+        run: gradle :app:testDebugUnitTest --continue
+
+      - name: Report test results
+        if: always()
+        run: |
+          python3 - << 'PY'
+          import glob, xml.etree.ElementTree as ET
+          total = failed = 0
+          for f in glob.glob("app/build/test-results/testDebugUnitTest/*.xml"):
+              root = ET.parse(f).getroot()
+              for tc in root.iter("testcase"):
+                  total += 1
+                  for fail in list(tc.findall("failure")) + list(tc.findall("error")):
+                      failed += 1
+                      msg = (fail.get("message") or "").replace("\n", " ")[:900]
+                      print(f"::error title={tc.get('classname').split('.')[-1]}.{tc.get('name')}::{msg}")
+              out = root.findtext("system-out") or ""
+              for line in out.splitlines():
+                  if line.startswith("DIAG"):
+                      print(f"::notice title=diag::{line[:900]}")
+          print(f"::notice title=tests::{total} tests, {failed} failed")
+          PY
+
+      - name: Stop if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
+
       - name: Build APK
         run: gradle :app:assembleDebug --stacktrace
 
@@ -50,6 +85,7 @@ jobs:
           path: Extreme-DECO-Planner-v${{ env.VERSION }}.apk
 
       - name: Publish APK on the Releases page
+        if: github.event_name != 'workflow_dispatch' || inputs.publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
