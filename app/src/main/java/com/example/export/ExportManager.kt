@@ -288,9 +288,10 @@ object ExportManager {
             y += 10f
             c1.drawText("SAFETY ALERTS (${res.alerts.size})", 32f, y, sectionPaint)
             y += 13f
-            res.alerts.take(5).forEach { alert ->
-                val txt = "[${alert.level.label.uppercase()}] ${alert.message}"
-                c1.drawText(txt.take(95), 36f, y, if (alert.level == AlertLevel.ERROR) warnPaint else bodyPaint)
+            res.alerts.take(6).forEach { alert ->
+                val txt = "[${alert.level.label}] ${alert.message}"
+                val paint = if (alert.level == AlertLevel.CRITICAL || alert.level == AlertLevel.HIGH) warnPaint else bodyPaint
+                c1.drawText(txt.take(95), 36f, y, paint)
                 y += 12f
             }
         }

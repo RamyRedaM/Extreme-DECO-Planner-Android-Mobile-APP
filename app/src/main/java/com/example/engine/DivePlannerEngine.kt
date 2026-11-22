@@ -598,8 +598,21 @@ object DivePlannerEngine {
             gasConsumption = OxygenAndConsumption.computeGasConsumption(finalSegments, finalInput, env)
         }
 
-        val alerts = OxygenAndConsumption.runSafetyChecks(finalInput, env, finalSegments, oxygen, gasConsumption)
         val endSurfGf = TissuesAndBuhlmann.surfaceGfPct(tissues, env, coeffs)
+        val ttsMin = (runtime - endBottomRuntime).coerceAtLeast(0.0)
+        val alerts = OxygenAndConsumption.runSafetyChecks(
+            input = finalInput,
+            env = env,
+            segments = finalSegments,
+            oxygen = oxygen,
+            consumption = gasConsumption,
+            endSurfaceGfPct = endSurfGf,
+            ttsMin = ttsMin,
+            totalDecoMin = totalDecoMin,
+            ndlMin = ndlMin,
+            totalRuntimeMin = runtime,
+            maxDepthM = maxDepthM
+        )
 
         val contingencies = if (includeContingencies) generateContingencies(finalInput) else emptyList()
         val ccrBailout = if (includeContingencies && isCcr) generateCcrBailout(finalInput) else null
@@ -612,7 +625,7 @@ object DivePlannerEngine {
             maxDepthM = maxDepthM,
             totalRuntimeMin = runtime,
             totalDecoMin = totalDecoMin,
-            ttsMin = (runtime - endBottomRuntime).coerceAtLeast(0.0),
+            ttsMin = ttsMin,
             firstStopM = firstStopRecorded,
             ndlMin = ndlMin,
             startTissues = startTissues,
@@ -644,6 +657,7 @@ object DivePlannerEngine {
         var carryTissues: TissueState? = null
         var carryCns = 0.0
         var carryOtu = 0.0
+        var carryMaxDepth: Double? = null
 
         dives.forEachIndexed { idx, entry ->
             val si = if (idx == 0) 0.0 else entry.surfaceIntervalBeforeMin.coerceAtLeast(0.0)
@@ -674,7 +688,8 @@ object DivePlannerEngine {
                 previousTissues = carryTissues,
                 previousCnsPct = carryCns,
                 previousDailyOtu = carryOtu,
-                surfaceIntervalMin = si
+                surfaceIntervalMin = si,
+                previousMaxDepthM = carryMaxDepth
             )
             val result = planDive(diveInput, includeContingencies = (idx == includeContingenciesForIndex))
             results += result
@@ -684,6 +699,7 @@ object DivePlannerEngine {
             carryTissues = result.endTissues
             carryCns = result.oxygen.endCnsPct
             carryOtu = result.oxygen.dailyOtu
+            carryMaxDepth = result.maxDepthM
         }
 
         return MultiDiveDayResult(
@@ -790,7 +806,7 @@ object DivePlannerEngine {
             tissueTimeline = emptyList(),
             oxygen = OxygenSummary(0.0, input.previousCnsPct, input.previousCnsPct, 0.0, input.previousDailyOtu, 0.0),
             gasConsumption = emptyList(),
-            alerts = listOf(PlanAlert(AlertLevel.ERROR, AlertCode.DECO_OVERFLOW, reason)),
+            alerts = listOf(PlanAlert(AlertLevel.CRITICAL, AlertCode.DECO_OVERFLOW, reason)),
             abortedReason = reason
         )
     }

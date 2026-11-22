@@ -292,4 +292,94 @@ object TissuesAndBuhlmann {
         }
         return 999.0
     }
+
+    /**
+     * Surface Interval Calculator based on the Bühlmann ZHL-16C model.
+     * Estimates remaining inert gas levels (N2 & He across all 16 compartments),
+     * leading compartment saturation %, Surface GF decay, NOAA 90-min CNS decay,
+     * clean-tissue off-gassing time, and repetitive NDL impact for a sequential dive.
+     */
+    fun estimateSurfaceInterval(
+        endTissues: TissueState,
+        endCnsPct: Double,
+        surfaceIntervalMin: Double,
+        env: Environment,
+        nextDiveDepthM: Double,
+        nextDiveGas: Gas,
+        general: GeneralSettings
+    ): SurfaceIntervalEstimate {
+        val zhl16c = Coefficients.tableFor(DecoModel.ZHL16C, general.useCompartment1b)
+        val si = surfaceIntervalMin.coerceIn(0.0, 1440.0)
+        val ambientN2 = ((env.pSurfaceBar - Constants.P_WATER_VAPOUR) * Constants.FN2_AIR).coerceAtLeast(0.0)
+
+        val postSi = if (si > 0.0) surfaceOffgas(endTissues, si, env, zhl16c) else endTissues
+
+        val loadsBefore = compartmentSurfaceLoadPct(endTissues, env, zhl16c)
+        val loadsAfter = compartmentSurfaceLoadPct(postSi, env, zhl16c)
+
+        val excessBeforeSum = endTissues.compartments.sumOf { (it.pInert - ambientN2).coerceAtLeast(0.0) }
+        val excessAfterSum = postSi.compartments.sumOf { (it.pInert - ambientN2).coerceAtLeast(0.0) }
+        val remainingExcessPct = if (excessBeforeSum > 1e-4) {
+            ((excessAfterSum / excessBeforeSum) * 100.0).coerceIn(0.0, 100.0)
+        } else {
+            0.0
+        }
+
+        val excessBeforePeak = endTissues.compartments.maxOf { (it.pInert - ambientN2).coerceAtLeast(0.0) }
+        val excessAfterPeak = postSi.compartments.maxOf { (it.pInert - ambientN2).coerceAtLeast(0.0) }
+        val peakN2 = postSi.compartments.maxOf { it.pN2 }
+        val peakHe = postSi.compartments.maxOf { it.pHe }
+
+        val leaderIdx = loadsAfter.indices.maxByOrNull { loadsAfter[it] } ?: 0
+        val surfGfBefore = surfaceGfPct(endTissues, env, zhl16c)
+        val surfGfAfter = surfaceGfPct(postSi, env, zhl16c)
+        val cnsAfter = endCnsPct * Math.pow(0.5, si / Constants.CNS_DECAY_HALF_TIME_MIN)
+
+        val zhlGeneral = general.copy(decoModel = DecoModel.ZHL16C)
+        val freshTissues = initTissues(env, general.arrivedUnder12hAtAltitude)
+        val safeNextDepth = nextDiveDepthM.coerceIn(6.0, 100.0)
+        val freshNdl = computeNdlMin(safeNextDepth, nextDiveGas, zhlGeneral, env, freshTissues)
+        val nextNdl = computeNdlMin(safeNextDepth, nextDiveGas, zhlGeneral, env, postSi)
+
+        // Estimate minutes until total excess inert gas drops below 10% of surfacing excess (capped at 24h)
+        var cleanTime = 0.0
+        if (excessBeforeSum > 1e-4) {
+            var tMin = 0.0
+            while (tMin <= 1440.0) {
+                val sim = surfaceOffgas(endTissues, tMin, env, zhl16c)
+                val remSum = sim.compartments.sumOf { (it.pInert - ambientN2).coerceAtLeast(0.0) }
+                if (remSum / excessBeforeSum <= 0.10) {
+                    cleanTime = tMin
+                    break
+                }
+                tMin += 15.0
+                cleanTime = tMin
+            }
+        }
+
+        return SurfaceIntervalEstimate(
+            surfaceIntervalMin = si,
+            startTissues = endTissues,
+            postSiTissues = postSi,
+            ambientN2Bar = ambientN2,
+            excessInertBeforeBar = excessBeforePeak,
+            excessInertAfterBar = excessAfterPeak,
+            remainingExcessInertPct = remainingExcessPct,
+            residualN2PeakBar = peakN2,
+            residualHePeakBar = peakHe,
+            leadingCompartmentNumber = leaderIdx + 1,
+            leadingN2HalfTimeMin = zhl16c[leaderIdx].n2HalfTime,
+            leadingSaturationBeforePct = loadsBefore[leaderIdx],
+            leadingSaturationAfterPct = loadsAfter[leaderIdx],
+            surfaceGfBeforePct = surfGfBefore,
+            surfaceGfAfterPct = surfGfAfter,
+            cnsBeforePct = endCnsPct,
+            cnsAfterPct = cnsAfter,
+            freshNdlMin = freshNdl,
+            nextDiveNdlMin = nextNdl,
+            compartmentLoadsBeforePct = loadsBefore,
+            compartmentLoadsAfterPct = loadsAfter,
+            estimatedCleanTimeMin = cleanTime.coerceAtMost(1440.0)
+        )
+    }
 }

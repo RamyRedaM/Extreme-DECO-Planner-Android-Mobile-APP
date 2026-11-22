@@ -229,7 +229,8 @@ data class DivePlanInput(
     val previousTissues: TissueState? = null,
     val previousCnsPct: Double = 0.0,
     val previousDailyOtu: Double = 0.0,
-    val surfaceIntervalMin: Double = 0.0
+    val surfaceIntervalMin: Double = 0.0,
+    val previousMaxDepthM: Double? = null
 ) {
     companion object {
         fun defaultGases(): List<Gas> = listOf(
@@ -350,30 +351,49 @@ data class GasConsumptionResult(
     val isSufficient: Boolean
 )
 
-enum class AlertLevel(val label: String) {
-    INFO("Info"),
-    WARNING("Warning"),
-    ERROR("Error")
+enum class AlertLevel(val label: String, val priority: Int) {
+    CRITICAL("CRITICAL", 0),
+    HIGH("HIGH", 1),
+    MEDIUM("MEDIUM", 2),
+    LOW("LOW", 3)
 }
 
-enum class AlertCode {
-    PPO2_HIGH_BOTTOM,
-    PPO2_HIGH_DECO,
-    HYPOXIC,
-    END_HIGH,
-    DENSITY_HIGH,
-    ICD_N2,
-    ICD_FIFTHS,
-    CNS,
-    OTU,
-    GAS_VOLUME,
-    GAS_ALERT_LIMITS,
-    GF_EXTREME,
-    ASCENT_FAST,
-    MOD_EXCEEDED,
-    LIPID,
-    NO_BREATHABLE_GAS,
-    DECO_OVERFLOW
+enum class AlertCode(val title: String) {
+    PPO2_HIGH_BOTTOM("High Bottom ppO₂"),
+    PPO2_HIGH_DECO("High Deco ppO₂"),
+    HYPOXIC("Hypoxic Gas"),
+    HYPOXIC_NO_TRAVEL("Missing Travel Gas"),
+    END_HIGH("Narcosis / END"),
+    DENSITY_HIGH("Gas Density"),
+    ICD_N2("ICD ΔppN₂ Jump"),
+    ICD_FIFTHS("ICD Rule of Fifths"),
+    CNS("CNS O₂ Clock"),
+    OTU("Pulmonary OTU"),
+    NO_O2_BREAKS("Missing O₂ Air Breaks"),
+    GAS_VOLUME("Insufficient Gas"),
+    END_PRESSURE_LOW("Low Surfacing Pressure"),
+    GAS_ALERT_LIMITS("Gas Margin / Budget"),
+    GF_EXTREME("Gradient Factors"),
+    SURFACE_GF_HIGH("Surfacing Supersaturation"),
+    ASCENT_FAST("Fast Ascent Rate"),
+    DESCENT_FAST("Fast Descent Rate"),
+    MOD_EXCEEDED("MOD Exceeded"),
+    SWITCH_MOD_MARGIN("Tight Switch MOD Margin"),
+    CCR_DILUENT_HAZARD("CCR Diluent Hazard"),
+    CCR_BAILOUT_RISK("CCR Bailout Gas Risk"),
+    HPNS_RISK("HPNS Deep Helium Risk"),
+    REVERSE_PROFILE("Reverse Dive Profile"),
+    SHORT_SURFACE_INTERVAL("Short Surface Interval"),
+    YOYO_PROFILE("Sawtooth / Yo-Yo Profile"),
+    NO_DECO_REDUNDANCY("Deco Gas Strategy"),
+    LONG_TTS_EXPOSURE("Extended TTS / Thermal"),
+    COLD_WATER("Cold Water Exposure"),
+    ALTITUDE_DIVING("Altitude Diving"),
+    TIGHT_NDL_MARGIN("Tight NDL Margin"),
+    LAST_STOP_6M_GAP("6 m Final Stop Gap"),
+    LIPID("Helium Lipid Model"),
+    NO_BREATHABLE_GAS("No Breathable Gas"),
+    DECO_OVERFLOW("Deco Limit Exceeded")
 }
 
 data class PlanAlert(
@@ -437,9 +457,39 @@ data class DivePlanResult(
     val ccrBailout: ContingencySummary? = null,
     val abortedReason: String? = null
 ) {
-    val hasErrors: Boolean get() = abortedReason != null || alerts.any { it.level == AlertLevel.ERROR }
-    val hasWarnings: Boolean get() = alerts.any { it.level == AlertLevel.WARNING }
+    val hasErrors: Boolean get() = abortedReason != null || alerts.any { it.level == AlertLevel.CRITICAL }
+    val hasHighAlerts: Boolean get() = alerts.any { it.level == AlertLevel.HIGH }
+    val hasMediumAlerts: Boolean get() = alerts.any { it.level == AlertLevel.MEDIUM }
+    val hasLowAlerts: Boolean get() = alerts.any { it.level == AlertLevel.LOW }
+    val hasWarnings: Boolean get() = alerts.any { it.level != AlertLevel.CRITICAL }
+    val highestAlertLevel: AlertLevel?
+        get() = if (abortedReason != null) AlertLevel.CRITICAL else alerts.minByOrNull { it.level.priority }?.level
 }
+
+data class SurfaceIntervalEstimate(
+    val surfaceIntervalMin: Double,
+    val startTissues: TissueState,
+    val postSiTissues: TissueState,
+    val ambientN2Bar: Double,
+    val excessInertBeforeBar: Double,
+    val excessInertAfterBar: Double,
+    val remainingExcessInertPct: Double,
+    val residualN2PeakBar: Double,
+    val residualHePeakBar: Double,
+    val leadingCompartmentNumber: Int,
+    val leadingN2HalfTimeMin: Double,
+    val leadingSaturationBeforePct: Double,
+    val leadingSaturationAfterPct: Double,
+    val surfaceGfBeforePct: Double,
+    val surfaceGfAfterPct: Double,
+    val cnsBeforePct: Double,
+    val cnsAfterPct: Double,
+    val freshNdlMin: Double,
+    val nextDiveNdlMin: Double,
+    val compartmentLoadsBeforePct: List<Double>,
+    val compartmentLoadsAfterPct: List<Double>,
+    val estimatedCleanTimeMin: Double
+)
 
 data class MultiDiveDayResult(
     val diveResults: List<DivePlanResult>,

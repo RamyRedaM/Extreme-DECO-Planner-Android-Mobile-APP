@@ -290,24 +290,11 @@ class DecompressionEngineTest {
     }
 
     @Test
-    fun testCriticalErrorsOnlyPolicy() {
-        val general = GeneralSettings(gasSelectionMode = GasSelectionMode.BEST_GAS_MIX)
-        val dive = DiveSettings()
+    fun testFourTierCategorizedSafetyAlerts() {
+        val dive = DiveSettings(ppO2Bottom = 1.40, maxEndM = 30.0, maxGasDensityGL = 5.2)
 
-        // 1. Standard 40m/20m Best GAS Mix dive should produce ZERO alerts (no noisy warnings/info)
-        val rec40 = GasCalculator.recommendBestMix(40.0, general, dive)
-        val cleanPlan = DivePlannerEngine.planDive(
-            DivePlanInput(
-                general = general,
-                dive = dive,
-                gases = rec40.plannerGases,
-                levels = listOf(DiveLevel("l40", 40.0, 20.0))
-            )
-        )
-        assertTrue("Standard Best GAS Mix dive must have zero noisy alerts (got: ${cleanPlan.alerts})", cleanPlan.alerts.isEmpty())
-
-        // 2. Dangerous User Input setup (EAN50 at 40m -> ppO2 ~ 2.5 bar > 1.60 bar) MUST raise critical ERROR
-        val dangerousPlan = DivePlannerEngine.planDive(
+        // 1. CRITICAL (Red): EAN50 at 40m -> ppO2 ~ 2.5 bar > 1.60 bar
+        val criticalPlan = DivePlannerEngine.planDive(
             DivePlanInput(
                 general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
                 dive = dive,
@@ -315,9 +302,70 @@ class DecompressionEngineTest {
                 levels = listOf(DiveLevel("l_bad", 40.0, 15.0))
             )
         )
-        assertTrue("Dangerous ppO2 must raise critical error", dangerousPlan.hasErrors)
-        assertTrue("All emitted alerts must be critical ERRORs", dangerousPlan.alerts.all { it.level == AlertLevel.ERROR })
-        assertTrue("Should flag PPO2_HIGH_BOTTOM", dangerousPlan.alerts.any { it.code == AlertCode.PPO2_HIGH_BOTTOM })
+        assertTrue("Dangerous ppO2 must raise CRITICAL alert", criticalPlan.hasErrors)
+        assertTrue(
+            "Should flag CRITICAL PPO2_HIGH_BOTTOM",
+            criticalPlan.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.PPO2_HIGH_BOTTOM }
+        )
+
+        // 2. HIGH (Orange): Bottom ppO2 > 1.40 (but <= 1.60) & OTU limit exceeded
+        val highPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
+                dive = dive,
+                alerts = AlertSettings(otuWarnPerDive = 50.0),
+                gases = listOf(Gas.fromPercent("ean36", 36, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 4))),
+                levels = listOf(DiveLevel("l_high", 32.0, 40.0)) // ppO2 ~ 1.52 bar (HIGH) & high OTU (HIGH)
+            )
+        )
+        assertTrue(
+            "Bottom ppO2 between 1.40 and 1.60 must raise HIGH PPO2_HIGH_BOTTOM",
+            highPlan.alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.PPO2_HIGH_BOTTOM }
+        )
+        assertTrue(
+            "Exceeding OTU limit must raise HIGH OTU alert",
+            highPlan.alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.OTU }
+        )
+
+        // 3. MEDIUM (Yellow): Air at 38m exceeds END > 30m + aggressive GF High 95%
+        val medPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, gfLow = 40, gfHigh = 95),
+                dive = dive,
+                gases = listOf(Gas.fromPercent("air38", 21, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2))),
+                levels = listOf(DiveLevel("l_med", 38.0, 12.0))
+            )
+        )
+        assertTrue(
+            "Air at 38m must raise MEDIUM END_HIGH",
+            medPlan.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.END_HIGH }
+        )
+        assertTrue(
+            "GF High 95% must raise MEDIUM GF_EXTREME",
+            medPlan.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.GF_EXTREME }
+        )
+
+        // 4. LOW (Gray): Very conservative GF (10/60) & configured gas budget exceeded
+        val lowPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, gfLow = 10, gfHigh = 60),
+                dive = dive,
+                alerts = AlertSettings(bottomMixMaxLitres = 300.0),
+                gases = listOf(Gas.fromPercent("ean32_low", 32, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2))),
+                levels = listOf(DiveLevel("l_low", 20.0, 15.0))
+            )
+        )
+        assertTrue(
+            "Very conservative GF should raise LOW GF_EXTREME",
+            lowPlan.alerts.any { it.level == AlertLevel.LOW && it.code == AlertCode.GF_EXTREME }
+        )
+        assertTrue(
+            "Exceeding gas budget should raise LOW GAS_ALERT_LIMITS",
+            lowPlan.alerts.any { it.level == AlertLevel.LOW && it.code == AlertCode.GAS_ALERT_LIMITS }
+        )
+        // Verify alerts are sorted in severity order (CRITICAL -> HIGH -> MEDIUM -> LOW)
+        val priorities = highPlan.alerts.map { it.level.priority }
+        assertEquals(priorities.sorted(), priorities)
     }
 
     @Test
@@ -361,7 +409,7 @@ class DecompressionEngineTest {
             )
         )
         assertEquals("36m/8min REC dive has zero deco stops", 0.0, plan36.totalDecoMin, 0.001)
-        assertTrue("36m/8min REC dive has zero critical errors (got: ${plan36.alerts})", plan36.alerts.isEmpty())
+        assertTrue("36m/8min REC dive has zero CRITICAL errors (got: ${plan36.alerts})", !plan36.hasErrors)
 
         // 3. 30m / 45min (< 40m, EXCEEDS NDL) -> TEC decompression dive with DECO gases
         val tec30 = GasCalculator.recommendBestMix(
@@ -384,5 +432,223 @@ class DecompressionEngineTest {
         )
         assertTrue("40m dive is not under 40m, so it remains a TEC dive", !tec40.isRecreational)
         assertTrue("40m dive proposes DECO gases", tec40.decoGases.isNotEmpty())
+    }
+
+    @Test
+    fun testSurfaceIntervalCalculatorBuhlmannZhl16c() {
+        val baseInput = DivePlanInput(
+            general = GeneralSettings(decoModel = DecoModel.ZHL16C, gfLow = 30, gfHigh = 85),
+            gases = listOf(Gas.fromPercent("air", 21, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2))),
+            levels = listOf(DiveLevel("d1", 30.0, 25.0))
+        )
+        val dive1 = DivePlannerEngine.planDive(baseInput)
+        val nextGas = Gas.fromPercent("ean32", 32, 0, GasRole.BOTTOM)
+
+        val est0 = TissuesAndBuhlmann.estimateSurfaceInterval(
+            dive1.endTissues, dive1.oxygen.endCnsPct, 0.0, dive1.env, 24.0, nextGas, baseInput.general
+        )
+        val est60 = TissuesAndBuhlmann.estimateSurfaceInterval(
+            dive1.endTissues, dive1.oxygen.endCnsPct, 60.0, dive1.env, 24.0, nextGas, baseInput.general
+        )
+        val est180 = TissuesAndBuhlmann.estimateSurfaceInterval(
+            dive1.endTissues, dive1.oxygen.endCnsPct, 180.0, dive1.env, 24.0, nextGas, baseInput.general
+        )
+        val est360 = TissuesAndBuhlmann.estimateSurfaceInterval(
+            dive1.endTissues, dive1.oxygen.endCnsPct, 360.0, dive1.env, 24.0, nextGas, baseInput.general
+        )
+
+        assertEquals(16, est60.compartmentLoadsAfterPct.size)
+        assertTrue("Remaining excess inert gas decreases monotonically (60m < 0m)", est60.remainingExcessInertPct < est0.remainingExcessInertPct)
+        assertTrue("Remaining excess inert gas decreases monotonically (180m < 60m)", est180.remainingExcessInertPct < est60.remainingExcessInertPct)
+        assertTrue("Remaining excess inert gas decreases monotonically (360m < 180m)", est360.remainingExcessInertPct < est180.remainingExcessInertPct)
+        assertTrue("Surface GF decreases with surface interval", est180.surfaceGfAfterPct <= est0.surfaceGfAfterPct)
+        assertTrue("CNS halves after 90 min half-life (180m ~ 25% of surfacing CNS)", est180.cnsAfterPct <= est0.cnsBeforePct * 0.26 + 0.01)
+        assertTrue("Next-dive NDL recovers as surface interval grows", est360.nextDiveNdlMin >= est0.nextDiveNdlMin)
+    }
+
+    @Test
+    fun testHighCnsSingleDive80PercentNoaaWarning() {
+        // NOAA limit at ppO2 1.40 bar is 150 min -> 126 min at ~1.40 bar yields > 80% and <= 100% single-dive CNS
+        val ean40 = Gas.fromPercent("ean40_cns", 40, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 8))
+        val cnsHighPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, btIncludesDescent = false),
+                dive = DiveSettings(ppO2Bottom = 1.45),
+                gases = listOf(ean40),
+                levels = listOf(DiveLevel("cns_85", 24.5, 125.0)) // pAmb ~ 3.49 bar -> ppO2 ~ 1.40 bar -> ~83% NOAA CNS
+            )
+        )
+        assertTrue(
+            "Single-dive CNS (${cnsHighPlan.oxygen.diveCnsPct}%) should be in 80..100% range",
+            cnsHighPlan.oxygen.diveCnsPct > 80.0 && cnsHighPlan.oxygen.diveCnsPct <= 100.0
+        )
+        assertTrue(
+            "Single-dive CNS > 80% must trigger HIGH (Orange) CNS alert",
+            cnsHighPlan.alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.CNS }
+        )
+
+        // Below 80% single-dive CNS (~67%) should NOT trigger HIGH CNS warning
+        val cnsModPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, btIncludesDescent = false),
+                dive = DiveSettings(ppO2Bottom = 1.45),
+                gases = listOf(ean40),
+                levels = listOf(DiveLevel("cns_65", 24.5, 95.0))
+            )
+        )
+        assertTrue("Single-dive CNS should be <= 80%", cnsModPlan.oxygen.diveCnsPct <= 80.0)
+        assertTrue(
+            "Single-dive CNS <= 80% must not trigger HIGH CNS alert",
+            cnsModPlan.alerts.none { it.level == AlertLevel.HIGH && it.code == AlertCode.CNS }
+        )
+
+        // Above 100% single-dive CNS must escalate to CRITICAL (Red)
+        val cnsCritPlan = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, btIncludesDescent = false),
+                dive = DiveSettings(ppO2Bottom = 1.45),
+                gases = listOf(ean40),
+                levels = listOf(DiveLevel("cns_110", 24.5, 160.0))
+            )
+        )
+        assertTrue("Single-dive CNS > 100% must trigger CRITICAL CNS alert", cnsCritPlan.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.CNS })
+    }
+
+    @Test
+    fun testProposedCriticalHighMediumWarnings() {
+        // ---- CRITICAL (Red) Warnings ----
+        // 1. Hypoxic bottom gas without normoxic travel gas
+        val hypoxicNoTravel = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
+                gases = listOf(Gas.fromPercent("tx1070", 10, 70, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 4))),
+                levels = listOf(DiveLevel("l_hyp", 80.0, 15.0))
+            )
+        )
+        assertTrue(
+            "Hypoxic bottom gas without travel gas must trigger CRITICAL HYPOXIC_NO_TRAVEL",
+            hypoxicNoTravel.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.HYPOXIC_NO_TRAVEL }
+        )
+
+        // 2. Severe narcosis (END > 45m) & UHMS gas density redline (> 6.2 g/L)
+        val deepAir = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
+                gases = listOf(Gas.fromPercent("air_deep", 21, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 4))),
+                levels = listOf(DiveLevel("l_50", 50.0, 15.0))
+            )
+        )
+        assertTrue(
+            "Air at 50m (END 50m > 45m) must trigger CRITICAL END_HIGH",
+            deepAir.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.END_HIGH }
+        )
+        assertTrue(
+            "Air at 50m (> 6.2 g/L) must trigger CRITICAL DENSITY_HIGH",
+            deepAir.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.DENSITY_HIGH }
+        )
+
+        // 3. CCR diluent hyperoxia (> 1.60 bar) & missing OC bailout gas
+        val ccrHazard = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(
+                    planningType = PlanningType.CCR,
+                    gasSelectionMode = GasSelectionMode.USER_INPUT_GAS
+                ),
+                gases = listOf(Gas.fromPercent("dil_air", 21, 0, GasRole.DILUENT)),
+                levels = listOf(DiveLevel("l_ccr", 70.0, 20.0)) // pAmb ~ 8.08 * 0.21 = 1.70 bar > 1.60
+            )
+        )
+        assertTrue(
+            "CCR hyperoxic diluent must trigger CRITICAL CCR_DILUENT_HAZARD",
+            ccrHazard.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.CCR_DILUENT_HAZARD }
+        )
+        assertTrue(
+            "CCR without OC bailout must trigger CRITICAL CCR_BAILOUT_RISK",
+            ccrHazard.alerts.any { it.level == AlertLevel.CRITICAL && it.code == AlertCode.CCR_BAILOUT_RISK }
+        )
+
+        // ---- HIGH (Orange) Warnings ----
+        // 4. Missing O2 air breaks (> 20 min continuous high-ppO2 deco) — and cleared when gasBreaks enabled
+        val o2NoBreaks = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS, gfLow = 30, gfHigh = 70),
+                gasBreaks = GasBreakSettings(enabled = false),
+                gases = listOf(
+                    Gas.fromPercent("tx1845", 18, 45, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 4)),
+                    Gas.fromPercent("ean50", 50, 0, GasRole.DECO, cylinder = CylinderConfig(12.0, 200.0, 2)),
+                    Gas.fromPercent("o2", 100, 0, GasRole.DECO, cylinder = CylinderConfig(12.0, 200.0, 2))
+                ),
+                levels = listOf(DiveLevel("l_o2", 55.0, 30.0))
+            )
+        )
+        assertTrue(
+            "Prolonged high-O2 deco without breaks must trigger HIGH NO_O2_BREAKS",
+            o2NoBreaks.alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.NO_O2_BREAKS }
+        )
+
+        // 5. Reverse dive profile & short surface interval on multi-dive day
+        val multiDay = DivePlannerEngine.planMultiDiveDay(
+            baseInput = DivePlanInput(
+                general = GeneralSettings(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
+                gases = listOf(
+                    Gas.fromPercent("air_m", 21, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2)),
+                    Gas.fromPercent("ean50_m", 50, 0, GasRole.DECO, cylinder = CylinderConfig(12.0, 200.0, 1))
+                )
+            ),
+            dives = listOf(
+                MultiDiveEntry("d1", "Dive 1", 0.0, listOf(DiveLevel("l1", 18.0, 25.0))),
+                MultiDiveEntry("d2", "Dive 2", 20.0, listOf(DiveLevel("l2", 36.0, 25.0))) // +18m deeper & 20m SI
+            )
+        )
+        val dive2Alerts = multiDay.diveResults[1].alerts
+        assertTrue(
+            "Reverse profile (+18m deeper) must trigger HIGH REVERSE_PROFILE",
+            dive2Alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.REVERSE_PROFILE }
+        )
+        assertTrue(
+            "20 min surface interval must trigger HIGH SHORT_SURFACE_INTERVAL",
+            dive2Alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.SHORT_SURFACE_INTERVAL }
+        )
+
+        // 6. Unacclimatized altitude dive (>= 300m, arrived < 12h) -> HIGH ALTITUDE_DIVING
+        val altUnaccl = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(
+                    gasSelectionMode = GasSelectionMode.USER_INPUT_GAS,
+                    elevationM = 1200,
+                    arrivedUnder12hAtAltitude = true
+                ),
+                gases = listOf(Gas.fromPercent("air_alt", 21, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2))),
+                levels = listOf(DiveLevel("l_alt", 20.0, 20.0))
+            )
+        )
+        assertTrue(
+            "Unacclimatized altitude dive must trigger HIGH ALTITUDE_DIVING",
+            altUnaccl.alerts.any { it.level == AlertLevel.HIGH && it.code == AlertCode.ALTITUDE_DIVING }
+        )
+
+        // ---- MEDIUM (Yellow) Warnings ----
+        // 7. Yo-yo sawtooth multi-level profile, fast descent (> 24 m/min), cold water (<= 10C), acclimatized altitude
+        val medMulti = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = GeneralSettings(
+                    gasSelectionMode = GasSelectionMode.USER_INPUT_GAS,
+                    surfaceTempC = 8,
+                    elevationM = 800,
+                    arrivedUnder12hAtAltitude = false
+                ),
+                dive = DiveSettings(descentRateMMin = 30.0),
+                gases = listOf(Gas.fromPercent("ean32_y", 32, 0, GasRole.BOTTOM, cylinder = CylinderConfig(12.0, 200.0, 2))),
+                levels = listOf(
+                    DiveLevel("y1", 24.0, 8.0),
+                    DiveLevel("y2", 12.0, 6.0),
+                    DiveLevel("y3", 22.0, 6.0)
+                )
+            )
+        )
+        assertTrue("Sawtooth profile must trigger MEDIUM YOYO_PROFILE", medMulti.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.YOYO_PROFILE })
+        assertTrue("Descent 30 m/min must trigger MEDIUM DESCENT_FAST", medMulti.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.DESCENT_FAST })
+        assertTrue("Water temp 8°C must trigger MEDIUM COLD_WATER", medMulti.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.COLD_WATER })
+        assertTrue("Acclimatized 800m altitude must trigger MEDIUM ALTITUDE_DIVING", medMulti.alerts.any { it.level == AlertLevel.MEDIUM && it.code == AlertCode.ALTITUDE_DIVING })
     }
 }

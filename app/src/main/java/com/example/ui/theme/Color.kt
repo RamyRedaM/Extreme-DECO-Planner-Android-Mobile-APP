@@ -33,6 +33,14 @@ val DecoEmerald = DecoGreen
 val NitroxAmber = DiveOrange
 val AlertCrimson = ErrorRed
 
+// 4-Tier Alert Severity Colors: CRITICAL (Red) / HIGH (Orange) / MEDIUM (Yellow) / LOW (Gray)
+val SeverityCriticalRed = ErrorRed
+val SeverityHighOrange = DiveOrange
+val SeverityMediumYellow = Color(0xFFB78103)
+val SeverityMediumYellowBg = Color(0xFFFFF8D6)
+val SeverityLowGray = Color(0xFF5C6B7A)
+val SeverityLowGrayBg = Color(0xFFEEF2F6)
+
 // Optional Dark Mode Palette (available via Settings toggle)
 val AbyssBackground = Color(0xFF07121E)
 val AbyssSurface = Color(0xFF0E1D2F)

@@ -693,19 +693,22 @@ fun SwitchSettingRow(
 @Composable
 fun AlertLevelIcon(level: AlertLevel, modifier: Modifier = Modifier) {
     val (icon, tint) = when (level) {
-        AlertLevel.ERROR -> Icons.Default.Error to AlertCrimson
-        AlertLevel.WARNING -> Icons.Default.Warning to NitroxAmber
-        AlertLevel.INFO -> Icons.Default.Info to CyanTelemetry
+        AlertLevel.CRITICAL -> Icons.Default.Error to SeverityCriticalRed
+        AlertLevel.HIGH -> Icons.Default.Warning to SeverityHighOrange
+        AlertLevel.MEDIUM -> Icons.Default.Warning to SeverityMediumYellow
+        AlertLevel.LOW -> Icons.Default.Info to SeverityLowGray
     }
     Icon(icon, contentDescription = level.label, tint = tint, modifier = modifier)
 }
 
 @Composable
-fun PlanStatusPill(hasErrors: Boolean, hasWarnings: Boolean, alertCount: Int) {
-    val (bg, fg, icon, label) = when {
-        hasErrors -> Quadruple(AlertCrimson.copy(alpha = 0.18f), AlertCrimson, Icons.Default.Error, "$alertCount CRITICAL")
-        hasWarnings -> Quadruple(NitroxAmber.copy(alpha = 0.18f), NitroxAmber, Icons.Default.Warning, "$alertCount ALERT")
-        else -> Quadruple(DecoEmerald.copy(alpha = 0.18f), DecoEmerald, Icons.Default.CheckCircle, "PLAN READY")
+fun PlanStatusPill(highestLevel: AlertLevel?, alertCount: Int) {
+    val (bg, fg, icon, label) = when (highestLevel) {
+        AlertLevel.CRITICAL -> Quadruple(SeverityCriticalRed.copy(alpha = 0.16f), SeverityCriticalRed, Icons.Default.Error, "$alertCount CRITICAL")
+        AlertLevel.HIGH -> Quadruple(SeverityHighOrange.copy(alpha = 0.16f), SeverityHighOrange, Icons.Default.Warning, "$alertCount HIGH")
+        AlertLevel.MEDIUM -> Quadruple(SeverityMediumYellowBg, SeverityMediumYellow, Icons.Default.Warning, "$alertCount MEDIUM")
+        AlertLevel.LOW -> Quadruple(SeverityLowGrayBg, SeverityLowGray, Icons.Default.Info, "$alertCount LOW")
+        null -> Quadruple(DecoEmerald.copy(alpha = 0.18f), DecoEmerald, Icons.Default.CheckCircle, "PLAN READY")
     }
     Surface(
         shape = RoundedCornerShape(20.dp),

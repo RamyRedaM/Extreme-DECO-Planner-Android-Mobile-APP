@@ -105,7 +105,7 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun addRepetitiveDive() {
+    fun addRepetitiveDive(surfaceIntervalMin: Double = 90.0) {
         _uiState.update { state ->
             if (state.dives.size >= 6) return@update state.copy(snackbarMessage = "Maximum 6 dives per day plan.")
             val nextNum = state.dives.size + 1
@@ -114,7 +114,7 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
             val newDive = MultiDiveEntry(
                 id = "dive_${System.currentTimeMillis()}",
                 label = "Dive $nextNum",
-                surfaceIntervalBeforeMin = 90.0,
+                surfaceIntervalBeforeMin = surfaceIntervalMin.coerceIn(0.0, 1440.0),
                 levels = listOf(DiveLevel("lvl_${System.currentTimeMillis()}", newDepth, 25.0))
             )
             state.copy(

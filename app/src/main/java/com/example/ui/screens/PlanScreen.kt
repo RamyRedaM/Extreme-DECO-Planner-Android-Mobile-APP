@@ -106,9 +106,8 @@ fun PlanScreen(
                     }
                     if (result != null) {
                         PlanStatusPill(
-                            hasErrors = result.hasErrors,
-                            hasWarnings = result.hasWarnings,
-                            alertCount = result.alerts.count { it.level != AlertLevel.INFO }
+                            highestLevel = result.highestAlertLevel,
+                            alertCount = result.alerts.size
                         )
                     }
                 }
@@ -212,7 +211,7 @@ fun PlanScreen(
                 }
             }
 
-            // 6. Critical Planning Errors Only
+            // 6. Categorized Safety Errors & Warnings (CRITICAL / HIGH / MEDIUM / LOW)
             if (result.alerts.isNotEmpty()) {
                 item {
                     AlertsCard(alerts = result.alerts)
@@ -227,6 +226,26 @@ fun PlanScreen(
                     planStyle = state.input.general.planStyle,
                     onToggleStyle = { style -> viewModel.updateGeneral { it.copy(planStyle = style) } }
                 )
+            }
+
+            // 8. Bühlmann ZHL-16C Surface Interval Calculator
+            state.dayResult?.let { dayRes ->
+                item {
+                    SurfaceIntervalCalculatorCard(
+                        dayResult = dayRes,
+                        dives = state.dives,
+                        activeDiveIndex = state.activeDiveIndex,
+                        general = state.input.general,
+                        units = units,
+                        onApplySurfaceInterval = { diveIdx, siMin ->
+                            viewModel.updateSurfaceInterval(diveIdx, siMin)
+                            viewModel.showMessage("Applied ${siMin.roundToInt()} min surface interval to ${state.dives.getOrNull(diveIdx)?.label ?: "Dive ${diveIdx + 1}"}.")
+                        },
+                        onAddDiveWithInterval = { siMin ->
+                            viewModel.addRepetitiveDive(surfaceIntervalMin = siMin)
+                        }
+                    )
+                }
             }
 
             // 8. Contingency & CCR Bailout Plans
@@ -487,11 +506,11 @@ private fun SummaryTelemetryGrid(
         Triple("1ST STOP", if (result.firstStopM > 0) UnitsAndPressure.formatDepth(result.firstStopM.toDouble(), units) else "NDL ${result.ndlMin.roundToInt()}m", DecoEmerald),
         Triple("SURF GF", "${result.endSurfaceGfPct.roundToInt()}%", if (result.endSurfaceGfPct > 90) AlertCrimson else CyanTelemetry),
         Triple(
-            "CNS%",
-            if (diveIndex > 0) "${result.oxygen.startCnsPct.roundToInt()}→${result.oxygen.endCnsPct.roundToInt()}%" else "${result.oxygen.endCnsPct.roundToInt()}%",
+            "CNS% (NOAA)",
+            if (diveIndex > 0) "${result.oxygen.startCnsPct.roundToInt()}→${result.oxygen.endCnsPct.roundToInt()}%" else "${result.oxygen.diveCnsPct.roundToInt()}%",
             when {
-                result.oxygen.endCnsPct > result.input.alerts.cnsErrorPct -> AlertCrimson
-                result.oxygen.endCnsPct > result.input.alerts.cnsWarnPct -> NitroxAmber
+                result.oxygen.diveCnsPct > 100.0 || result.oxygen.endCnsPct > result.input.alerts.cnsErrorPct -> SeverityCriticalRed
+                result.oxygen.diveCnsPct > 80.0 || result.oxygen.endCnsPct > result.input.alerts.cnsWarnPct -> SeverityHighOrange
                 else -> DecoEmerald
             }
         ),
@@ -538,41 +557,116 @@ private fun SummaryTelemetryGrid(
 
 @Composable
 private fun AlertsCard(alerts: List<PlanAlert>) {
-    val hasErr = alerts.any { it.level == AlertLevel.ERROR }
+    val sorted = remember(alerts) { alerts.sortedBy { it.level.priority } }
+    val critCount = sorted.count { it.level == AlertLevel.CRITICAL }
+    val highCount = sorted.count { it.level == AlertLevel.HIGH }
+    val medCount = sorted.count { it.level == AlertLevel.MEDIUM }
+    val lowCount = sorted.count { it.level == AlertLevel.LOW }
+
+    val topLevel = sorted.firstOrNull()?.level ?: AlertLevel.LOW
+    val cardAccent = when (topLevel) {
+        AlertLevel.CRITICAL -> SeverityCriticalRed
+        AlertLevel.HIGH -> SeverityHighOrange
+        AlertLevel.MEDIUM -> SeverityMediumYellow
+        AlertLevel.LOW -> SeverityLowGray
+    }
+
     TelemetryCard(
-        borderColor = if (hasErr) AlertCrimson.copy(alpha = 0.8f) else NitroxAmber.copy(alpha = 0.7f)
+        modifier = Modifier.testTag("plan_alerts_card"),
+        borderColor = cardAccent.copy(alpha = 0.78f)
     ) {
         Text(
-            text = "Critical Planning Errors (${alerts.size})",
+            text = "Dive Plan Errors & Warnings (${sorted.size})",
             style = MaterialTheme.typography.titleMedium,
-            color = if (hasErr) AlertCrimson else NitroxAmber
+            color = cardAccent
         )
+        Spacer(Modifier.height(6.dp))
+
+        // Severity Summary Chips (CRITICAL / HIGH / MEDIUM / LOW)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (critCount > 0) SeverityCountChip("$critCount CRITICAL", SeverityCriticalRed, SeverityCriticalRed.copy(alpha = 0.14f))
+            if (highCount > 0) SeverityCountChip("$highCount HIGH", SeverityHighOrange, SeverityHighOrange.copy(alpha = 0.14f))
+            if (medCount > 0) SeverityCountChip("$medCount MEDIUM", SeverityMediumYellow, SeverityMediumYellowBg)
+            if (lowCount > 0) SeverityCountChip("$lowCount LOW", SeverityLowGray, SeverityLowGrayBg)
+        }
+
         Spacer(Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            alerts.forEach { alert ->
-                val bg = when (alert.level) {
-                    AlertLevel.ERROR -> AlertCrimson.copy(alpha = 0.14f)
-                    AlertLevel.WARNING -> NitroxAmber.copy(alpha = 0.14f)
-                    AlertLevel.INFO -> CyanTelemetry.copy(alpha = 0.12f)
+            sorted.forEach { alert ->
+                val (fg, bg) = when (alert.level) {
+                    AlertLevel.CRITICAL -> SeverityCriticalRed to SeverityCriticalRed.copy(alpha = 0.12f)
+                    AlertLevel.HIGH -> SeverityHighOrange to SeverityHighOrange.copy(alpha = 0.12f)
+                    AlertLevel.MEDIUM -> SeverityMediumYellow to SeverityMediumYellowBg
+                    AlertLevel.LOW -> SeverityLowGray to SeverityLowGrayBg
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(bg)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top
+                Surface(
+                    shape = RoundedCornerShape(9.dp),
+                    color = bg,
+                    border = BorderStroke(1.dp, fg.copy(alpha = 0.42f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    AlertLevelIcon(alert.level, modifier = Modifier.size(18.dp).padding(top = 1.dp))
-                    Text(
-                        text = alert.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        AlertLevelIcon(alert.level, modifier = Modifier.size(18.dp).padding(top = 1.dp))
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(5.dp),
+                                    color = fg
+                                ) {
+                                    Text(
+                                        text = alert.level.label,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold),
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                                Text(
+                                    text = alert.code.title,
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = fg,
+                                    maxLines = 1
+                                )
+                            }
+                            Text(
+                                text = alert.message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SeverityCountChip(label: String, fg: Color, bg: Color) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = bg,
+        border = BorderStroke(1.dp, fg.copy(alpha = 0.55f))
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = fg,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
     }
 }
 
