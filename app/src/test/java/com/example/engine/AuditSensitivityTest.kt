@@ -47,7 +47,7 @@ class AuditSensitivityTest {
         val changed = a.keys.filter { a[it] != b[it] }
         val detail = changed.filter { it in setOf("runtime", "deco", "cns", "otu", "firstStop", "alerts", "gasReq") }
             .joinToString("; ") { "$it ${a[it]}→${b[it]}".take(160) }
-        lines += if (changed.isEmpty()) "NOCHANGE $name" else "OK $name [${changed.joinToString("/")}] $detail"
+        lines += if (changed.isEmpty()) "NOCHANGE $name" else if (name.startsWith("*")) "OK $name [${changed.joinToString("/")}] $detail" else "OK $name [${changed.filter { it != "segments" }.joinToString("/")}]"
     }
 
     private fun g(f: (GeneralSettings) -> GeneralSettings) = base.copy(general = f(base.general))
@@ -56,8 +56,7 @@ class AuditSensitivityTest {
     private fun a(f: (AlertSettings) -> AlertSettings) = base.copy(alerts = f(base.alerts))
     private fun gb(f: (GasBreakSettings) -> GasBreakSettings) = base.copy(gasBreaks = f(base.gasBreaks))
 
-    @Test
-    fun audit() {
+    fun auditRound1() {
         lines += "BASE " + fp(DivePlannerEngine.planDive(base)).entries.filter { it.key != "segments" }.joinToString(" ") { "${it.key}=${it.value}" }
 
         // General
@@ -189,6 +188,71 @@ class AuditSensitivityTest {
         lines += "SI nextDepth 25->40 ndl ${"%.1f".format(s60.nextDiveNdlMin)}->${"%.1f".format(sDeep.nextDiveNdlMin)}; gas EAN32->Air ndl ${"%.1f".format(s60.nextDiveNdlMin)}->${"%.1f".format(sAir.nextDiveNdlMin)}"
         val sGf = TissuesAndBuhlmann.estimateSurfaceInterval(first.endTissues, first.oxygen.endCnsPct, 60.0, env, 25.0, Gas.fromPercent("x", 32, 0, GasRole.BOTTOM), base.general.copy(gfHigh = 90))
         lines += "SI gfHigh 70->90 ndl ${"%.1f".format(s60.nextDiveNdlMin)}->${"%.1f".format(sGf.nextDiveNdlMin)}"
+
+        lines.forEach { println("DIAG $it") }
+    }
+
+    @Test
+    fun auditRound2() {
+        check("ppO2Bottom 1.4->1.2", base, d { it.copy(ppO2Bottom = 1.2) })
+        check("surfaceTempC 22->5", base, g { it.copy(surfaceTempC = 5) })
+        check("btIncludesDescent false", base, g { it.copy(btIncludesDescent = false) })
+        check("planningType CCR", base, g { it.copy(planningType = PlanningType.CCR) })
+        check("gasSelectionMode BEST", base, g { it.copy(gasSelectionMode = GasSelectionMode.BEST_GAS_MIX) })
+        val brk = gb { it.copy(enabled = true) }
+        check("gasBreaks breakTime 5->8", brk, brk.copy(gasBreaks = brk.gasBreaks.copy(breakTimeMin = 8.0)))
+        check("gasBreaks applyDepth 6->3", brk, brk.copy(gasBreaks = brk.gasBreaks.copy(applyDepthMaxM = 3.0)))
+        check("bottomRmv 20->25", base, c { it.copy(bottomRmvLMin = 25.0) })
+        check("decoRmv 15->20", base, c { it.copy(decoRmvLMin = 20.0) })
+        check("stressFactor 1.5->2.0 (THIRDS)", base, c { it.copy(stressFactor = 2.0) })
+        check("*bottomReserve QUARTERS", base, c { it.copy(bottomReserveRule = ReserveRuleBottom.QUARTERS) })
+        check("*bottomReserve HALF", base, c { it.copy(bottomReserveRule = ReserveRuleBottom.HALF) })
+        check("*bottomReserve ROCK_BOTTOM", base, c { it.copy(bottomReserveRule = ReserveRuleBottom.ROCK_BOTTOM) })
+        val rb = c { it.copy(bottomReserveRule = ReserveRuleBottom.ROCK_BOTTOM) }
+        check("*ROCK_BOTTOM add travel gas (descent switch)", rb, rb.copy(gases = listOf(travel, bottom, ean50, o2)))
+        check("*ROCK_BOTTOM mixChangeExtra 1->0", rb, rb.copy(dive = rb.dive.copy(mixChangeExtraTimeMin = 0.0)))
+        check("*decoReserve LOST_GAS (stress 1.5)", base, c { it.copy(decoReserveRule = ReserveRuleDeco.LOST_GAS) })
+        val lg = c { it.copy(decoReserveRule = ReserveRuleDeco.LOST_GAS) }
+        check("*stressFactor 1.5->2.0 (LOST_GAS)", lg, lg.copy(consumption = lg.consumption.copy(stressFactor = 2.0)))
+        val ccr = g { it.copy(planningType = PlanningType.CCR) }
+        check("ccr setpointDescent 0.7->0.5", ccr, ccr.copy(ccr = ccr.ccr.copy(setpointDescent = 0.5)))
+        val ccrD = ccr.copy(ccr = ccr.ccr.copy(setpointDeco = 1.5))
+        check("ccr switchToDeco 6->12 (deco SP 1.5)", ccrD, ccrD.copy(ccr = ccrD.ccr.copy(switchToDecoDepthM = 12.0)))
+        check("level depth 60->63", base, base.copy(levels = listOf(DiveLevel("l1", 63.0, 25.0))))
+        check("level time 25->30", base, base.copy(levels = listOf(DiveLevel("l1", 60.0, 30.0))))
+        check("level2 add 40m/10", base, base.copy(levels = listOf(DiveLevel("l1", 60.0, 25.0), DiveLevel("l2", 40.0, 10.0))))
+        check("level gasId ean50 at 21m level", base.copy(levels = listOf(DiveLevel("l1", 60.0, 25.0), DiveLevel("l2", 21.0, 10.0))),
+            base.copy(levels = listOf(DiveLevel("l1", 60.0, 25.0), DiveLevel("l2", 21.0, 10.0, gasId = "ean50"))))
+        val first = DivePlannerEngine.planDive(base)
+        val rep = base.copy(levels = listOf(DiveLevel("r", 30.0, 30.0)), previousTissues = first.endTissues, previousCnsPct = first.oxygen.endCnsPct, previousDailyOtu = first.oxygen.dailyOtu, surfaceIntervalMin = 60.0)
+        check("*repetitive SI 60->240", rep, rep.copy(surfaceIntervalMin = 240.0))
+
+        // Light dive where switch stops are not otherwise required
+        val air = Gas.fromPercent("air", 21, 0, GasRole.BOTTOM)
+        val light = base.copy(gases = listOf(air, ean50), levels = listOf(DiveLevel("x", 40.0, 15.0)), dive = DiveSettings(mixChangeExtraTimeMin = 0.0))
+        check("*stopOnGasSwitch false (40m/15 air, EAN50)", light, light.copy(dive = light.dive.copy(stopOnGasSwitch = false)))
+        check("*maxGasDensity 5.2->6.3 (40m air)", light, light.copy(dive = light.dive.copy(maxGasDensityGL = 6.3)))
+        check("*ppN2MaxDeco 3.16->1.5 (40m air)", light, light.copy(dive = light.dive.copy(ppN2MaxDeco = 1.5)))
+
+        val bg = GeneralSettings(gasSelectionMode = GasSelectionMode.BEST_GAS_MIX)
+        for (depth in listOf(45.0, 55.0, 90.0)) {
+            fun bm(gen: GeneralSettings = bg, dv: DiveSettings = DiveSettings()) =
+                GasCalculator.recommendBestMix(depth, gen, dv, levels = listOf(DiveLevel("b", depth, 20.0))).plannerGases
+                    .joinToString(",") { "${it.role.name.take(2)}:${it.displayName}" }
+            val b0 = bm()
+            fun bmCheck(name: String, v: String) { lines += if (v == b0) "NOCHANGE bestMix@${depth.toInt()} $name ($b0)" else "OK bestMix@${depth.toInt()} $name: $b0 → $v" }
+            bmCheck("o2Narcotic false", bm(dv = DiveSettings(o2Narcotic = false)))
+            bmCheck("ppN2Max 2.5", bm(dv = DiveSettings(ppN2Max = 2.5)))
+            bmCheck("ppN2MaxDeco 2.0", bm(dv = DiveSettings(ppN2MaxDeco = 2.0)))
+            bmCheck("ppO2Min 0.21", bm(dv = DiveSettings(ppO2Min = 0.21)))
+        }
+
+        // Rock-bottom expected value check: 2 divers x 20 x 1.5 = 60 L/min, from 60 m to first ascent switch at 21 m
+        val rbRes = DivePlannerEngine.planDive(rb)
+        val gcB = rbRes.gasConsumption.first { it.gas.id == "tx" }
+        lines += "ROCKBOTTOM reserve=${gcB.reserveLitres.roundToInt()} used=${gcB.usedLitres.roundToInt()} firstSWITCHseg=${rbRes.segments.firstOrNull { it.type == SegmentType.SWITCH }?.let { "${it.type}@${it.fromDepthM}" }}"
+        val rbT = DivePlannerEngine.planDive(rb.copy(gases = listOf(travel, bottom, ean50, o2)))
+        lines += "ROCKBOTTOM+travel reserve=${rbT.gasConsumption.first { it.gas.id == "tx" }.reserveLitres.roundToInt()} firstSWITCHseg=${rbT.segments.firstOrNull { it.type == SegmentType.SWITCH }?.let { "@${it.fromDepthM}" }} travelReserve=${rbT.gasConsumption.first { it.gas.id == "travel" }.reserveLitres.roundToInt()}"
 
         lines.forEach { println("DIAG $it") }
     }
