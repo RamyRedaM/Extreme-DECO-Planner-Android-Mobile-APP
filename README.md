@@ -14,6 +14,13 @@
 </p>
 
 <p align="center">
+  <img src="docs/screenshots/planner-overview.jpg" alt="Planner" width="180">
+  <img src="docs/screenshots/planner-profile-chart.jpg" alt="Dive profile" width="180">
+  <img src="docs/screenshots/planner-alerts-1.jpg" alt="Safety alerts" width="180">
+  <img src="docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator" width="180">
+</p>
+
+<p align="center">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
@@ -35,6 +42,7 @@
 - [Download](#download)
 - [Features](#features)
 - [App Screens](#app-screens)
+- [Screenshots](#screenshots)
 - [How to Plan a Dive](#how-to-plan-a-dive)
 - [Decompression Models](#decompression-models)
 - [Best Gas Mix](#best-gas-mix)
@@ -149,7 +157,66 @@ The app has four tabs:
 | **Gases** | Recommend Best Mix, or add and edit your own travel, bottom, diluent, deco and bailout gases with cylinders |
 | **Charts** | Profile, partial pressures, tissue loading, gas consumption and M-value charts |
 
-> Screenshots will be added in `docs/screenshots/`.
+See the [Screenshots](#screenshots) section for every screen.
+
+---
+
+## Screenshots
+
+### Planner
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-overview.jpg" alt="Technical dive plan with Best GAS Mix" width="200"><br><sub>Technical dive plan with Best GAS Mix</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-best-gas-kit.jpg" alt="Recommended gas and cylinder kit" width="200"><br><sub>Recommended gas and cylinder kit</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-multi-dive-day.jpg" alt="Multi-dive day with surface intervals" width="200"><br><sub>Multi-dive day with surface intervals</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-dive-levels.jpg" alt="Multi-level dive profile" width="200"><br><sub>Multi-level dive profile</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-profile-chart.jpg" alt="Dive profile chart with gas switches and TTS" width="200"><br><sub>Dive profile chart with gas switches and TTS</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator (ZHL-16C)" width="200"><br><sub>Surface Interval Calculator (ZHL-16C)</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-alerts-1.jpg" alt="Safety alerts: CRITICAL and HIGH" width="200"><br><sub>Safety alerts: CRITICAL and HIGH</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/planner-alerts-2.jpg" alt="Safety alerts: MEDIUM and LOW" width="200"><br><sub>Safety alerts: MEDIUM and LOW</sub></td>
+  </tr>
+</table>
+
+### Gases
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/gases-kit.jpg" alt="Best GAS Mix cylinder kit" width="200"><br><sub>Best GAS Mix cylinder kit</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/gases-editor.jpg" alt="Gas and cylinder editor with MOD, END and density" width="200"><br><sub>Gas and cylinder editor with MOD, END and density</sub></td>
+  </tr>
+</table>
+
+### Charts
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/charts-overview.jpg" alt="Decompression and tissue charts" width="200"><br><sub>Decompression and tissue charts</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/charts-16-compartments.jpg" alt="16-compartment tissue loading" width="200"><br><sub>16-compartment tissue loading</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/charts-tension-timeline.jpg" alt="Inert gas tension timeline" width="200"><br><sub>Inert gas tension timeline</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/charts-gas-consumption.jpg" alt="Gas consumption vs cylinder capacity" width="200"><br><sub>Gas consumption vs cylinder capacity</sub></td>
+  </tr>
+</table>
+
+### Settings
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/settings-general.jpg" alt="Planning type and units" width="200"><br><sub>Planning type and units</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/settings-model-gf.jpg" alt="Deco model and gradient factors" width="200"><br><sub>Deco model and gradient factors</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/settings-limits.jpg" alt="ppO2, ppN2 and END limits" width="200"><br><sub>ppO2, ppN2 and END limits</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/settings-rates.jpg" alt="Density, rates and stops" width="200"><br><sub>Density, rates and stops</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/settings-gas-reserve.jpg" alt="Gas consumption and reserve rules" width="200"><br><sub>Gas consumption and reserve rules</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -456,7 +523,8 @@ All defaults can be changed in the **Settings** tab.
 - [ ] Full VPM-B implementation
 - [x] Four-level safety alerts (CRITICAL / HIGH / MEDIUM / LOW)
 - [x] Surface Interval Calculator (based on ZHL-16C)
-- [ ] Screenshots and a short demo video
+- [x] Screenshots
+- [ ] Short demo video
 - [ ] pSCR (passive semi-closed rebreather) mode
 
 ---
