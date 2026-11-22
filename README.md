@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2.apk"><strong>⬇ Android Mobiles Download (APK) Ver 1.27.2</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2-unsigned.ipa"><strong>⬇ iPhone Mobiles Download (ipa) Ver 1.27.2</strong></a>
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2-unsigned.ipa"><strong>⬇ iPhone Mobiles Download (ipa , sideloaded) Ver 1.27.2</strong></a>
 </p>
 
 <p align="center">
