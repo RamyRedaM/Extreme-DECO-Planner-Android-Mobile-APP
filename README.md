@@ -32,7 +32,7 @@
 ---
 
 > [!WARNING]
-> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this app.** Every Experienced TEC diver knows very well that all the dive algos are trial/error algos and there is NO Mathematical Model on earth that can truely and 100% model the human body and how it will react to different depths with different gases , so Extreme DECO Planner is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Dive within your training limits, cross-check every plan with a second independent planner, and carry backup tables. You use this software entirely at your own risk.
+> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this app.** Every Experienced TEC diver knows very well that all the dive algos are trial/error algos and there is NO Mathematical Model on earth that can truely and 100% model the human body and how it will react to different depths with different gases , so Extreme DECO Planner is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Dive within your training limits, cross-check every plan with a second independent planner, and carry backup tables. You use this software at your own risk.
 
 ---
 
