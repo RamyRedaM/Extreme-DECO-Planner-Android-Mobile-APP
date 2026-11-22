@@ -58,11 +58,16 @@ fun PlanScreen(
     ) {
         // 0. Hero Scuba Visual Banner
         item {
+            val isRecDive = gasMode == GasSelectionMode.BEST_GAS_MIX && state.bestMixRec?.isRecreational == true
             HeroPhotoBanner(
                 imageRes = R.drawable.img_hero_planner,
                 contentDescription = "Technical scuba diver over turquoise reef",
-                badge = "${state.input.general.decoModel.shortLabel} · GF ${state.input.general.gfLow}/${state.input.general.gfHigh}",
-                title = "Technical Dive Planner",
+                badge = if (isRecDive) {
+                    "REC · NDL · ${state.input.general.decoModel.shortLabel}"
+                } else {
+                    "${state.input.general.decoModel.shortLabel} · GF ${state.input.general.gfLow}/${state.input.general.gfHigh}"
+                },
+                title = if (isRecDive) "Recreational Dive Planner" else "Technical Dive Planner",
                 subtitle = "${state.activeDive.label} · Max ${UnitsAndPressure.formatDepth(state.activeDive.levels.maxOfOrNull { it.depthM } ?: 40.0, units)} · ${if (result != null) "TTS ${result.ttsMin.roundToInt()}m · " else ""}${gasMode.label}",
                 actionLabel = if (result?.hasErrors == true) "CHECK ERRORS" else if (result != null) "RT ${UnitsAndPressure.formatRuntimeMmSs(result.totalRuntimeMin)}" else null,
                 onAction = {}
@@ -87,7 +92,11 @@ fun PlanScreen(
                         )
                         Text(
                             text = if (gasMode == GasSelectionMode.BEST_GAS_MIX) {
-                                "Auto-computed 4-bottle gas plan for all dive levels"
+                                if (state.bestMixRec?.isRecreational == true) {
+                                    "REC Dive (< 40m, within NDL) · Air / Nitrox (EAN32 default)"
+                                } else {
+                                    "Auto-computed technical gas plan for all dive levels"
+                                }
                             } else {
                                 "Using custom bottles configured in the Gases tab"
                             },

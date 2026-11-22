@@ -74,9 +74,13 @@ fun GasesScreen(
             HeroPhotoBanner(
                 imageRes = R.drawable.img_deco_tanks,
                 contentDescription = "Technical scuba gas cylinders on sunlit dive deck",
-                badge = state.input.general.gasSelectionMode.label,
+                badge = if (isBestMode && state.bestMixRec?.isRecreational == true) "REC · Best GAS Mix" else state.input.general.gasSelectionMode.label,
                 title = "Gas Blending & Cylinder Kit",
-                subtitle = "100% O₂ @ 6m · EAN50 @ 21m · Depth Travel & MOD Bottom Mixes"
+                subtitle = if (isBestMode && state.bestMixRec?.isRecreational == true) {
+                    "REC Dive (< 40m, Within NDL) · ${state.bestMixRec?.bottomGas?.displayName ?: "EAN32"} · Air / Nitrox only"
+                } else {
+                    "100% O₂ @ 6m · EAN50 @ 21m · Depth Travel & MOD Bottom Mixes"
+                }
             )
         }
 

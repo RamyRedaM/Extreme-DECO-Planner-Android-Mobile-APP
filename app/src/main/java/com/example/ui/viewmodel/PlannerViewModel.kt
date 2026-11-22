@@ -288,12 +288,21 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
             general = state.input.general,
             dive = state.input.dive,
             existingGases = state.input.gases,
-            alerts = state.input.alerts
+            alerts = state.input.alerts,
+            levels = state.activeDive.levels,
+            previousTissues = state.activeResult?.input?.previousTissues,
+            surfaceIntervalMin = state.activeResult?.input?.surfaceIntervalMin ?: 0.0,
+            consumption = state.input.consumption
         )
         val clearedLevels = state.dives.mapIndexed { idx, d ->
             if (idx == state.activeDiveIndex) {
                 d.copy(levels = d.levels.map { it.copy(gasId = null) })
             } else d
+        }
+        val msg = if (rec.isRecreational) {
+            "REC Dive (Within NDL): Best GAS Mix ${rec.bottomGas.displayName} (Air / Nitrox only)"
+        } else {
+            "Best GAS Mix active: 6m ${rec.deco6mO2?.displayName ?: "O2"} · 21m ${rec.deco21mEan50?.displayName ?: "EAN50"} · Travel ${rec.travelGasDisplay.displayName} · MOD ${rec.bottomGas.displayName}"
         }
         _uiState.update {
             it.copy(
@@ -303,7 +312,7 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
                 ),
                 dives = clearedLevels,
                 bestMixRec = rec,
-                snackbarMessage = "Best GAS Mix active: 6m ${rec.deco6mO2.displayName} · 21m ${rec.deco21mEan50.displayName} · Travel ${rec.travelGasDisplay.displayName} · MOD ${rec.bottomGas.displayName}"
+                snackbarMessage = msg
             )
         }
         recomputePlan(immediate = true)
@@ -403,32 +412,36 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
 
                 // Phase 1: Compute primary multi-dive plan fast (without blocking on contingencies)
                 val (dayRes, bestRec, syncedGases) = withContext(Dispatchers.Default) {
-                    val maxDepth = snapshot.activeDive.levels.maxOfOrNull { it.depthM } ?: 40.0
-                    val rec = GasCalculator.recommendBestMix(
-                        maxDepthM = maxDepth,
-                        general = snapshot.input.general,
-                        dive = snapshot.input.dive,
-                        existingGases = snapshot.input.gases,
-                        alerts = snapshot.input.alerts
-                    )
                     val isBestMode = snapshot.input.general.gasSelectionMode == GasSelectionMode.BEST_GAS_MIX
-                    val effectiveGases = if (isBestMode) rec.plannerGases else snapshot.input.gases
-                    val effectiveInput = snapshot.input.copy(gases = effectiveGases)
                     val effectiveDives = if (isBestMode) {
                         snapshot.dives.map { d -> d.copy(levels = d.levels.map { it.copy(gasId = null) }) }
                     } else {
                         snapshot.dives
                     }
                     val res = DivePlannerEngine.planMultiDiveDay(
-                        baseInput = effectiveInput,
+                        baseInput = snapshot.input,
                         dives = effectiveDives,
                         includeContingenciesForIndex = -1
                     )
                     val activeDiveRes = res.diveResults.getOrNull(snapshot.activeDiveIndex)
+                    val maxDepth = snapshot.activeDive.levels.maxOfOrNull { it.depthM } ?: 40.0
+                    val rec = GasCalculator.recommendBestMix(
+                        maxDepthM = maxDepth,
+                        general = snapshot.input.general,
+                        dive = snapshot.input.dive,
+                        existingGases = snapshot.input.gases,
+                        alerts = snapshot.input.alerts,
+                        levels = snapshot.activeDive.levels,
+                        previousTissues = activeDiveRes?.input?.previousTissues,
+                        surfaceIntervalMin = activeDiveRes?.input?.surfaceIntervalMin ?: 0.0,
+                        consumption = snapshot.input.consumption
+                    )
                     val finalGases = if (isBestMode && activeDiveRes != null) {
                         activeDiveRes.input.gases
+                    } else if (isBestMode) {
+                        rec.plannerGases
                     } else {
-                        effectiveGases
+                        snapshot.input.gases
                     }
                     val finalRec = if (isBestMode && activeDiveRes != null) {
                         val byId = finalGases.associateBy { it.id }
@@ -437,8 +450,8 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
                             bottomGas = syncGas(rec.bottomGas),
                             travelGas = rec.travelGas?.let { syncGas(it) },
                             travelGasDisplay = syncGas(rec.travelGasDisplay),
-                            deco6mO2 = syncGas(rec.deco6mO2),
-                            deco21mEan50 = syncGas(rec.deco21mEan50),
+                            deco6mO2 = rec.deco6mO2?.let { syncGas(it) },
+                            deco21mEan50 = rec.deco21mEan50?.let { syncGas(it) },
                             deepDecoGas = rec.deepDecoGas?.let { syncGas(it) },
                             decoGases = rec.decoGases.map { syncGas(it) },
                             plannerGases = finalGases

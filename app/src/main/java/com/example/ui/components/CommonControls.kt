@@ -181,22 +181,61 @@ fun BestGasKitGrid(
 ) {
     fun cylTag(g: Gas): String = "${g.cylinder.count}×${g.cylinder.waterVolumeL.roundToInt()}L @ ${g.cylinder.fillPressureBar.roundToInt()}b"
 
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    if (rec.isRecreational) {
+        Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = DecoGreen.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, DecoGreen.copy(alpha = 0.45f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("rec_dive_badge")
+            ) {
+                Text(
+                    text = "REC — Recreational Dive (< 40m & Within NDL) · No DECO or Trimix required",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = DecoGreen,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                )
+            }
+            val mixLabel = if (rec.bottomGas.o2Pct == 32) {
+                "REC Best Gas Mix — Default Nitrox (EAN32)"
+            } else if (rec.bottomGas.o2Pct == 21) {
+                "REC Best Gas Mix — Air (21% O₂)"
+            } else {
+                "REC Best Gas Mix — Nitrox (${rec.bottomGas.displayName})"
+            }
             BestGasBottleTile(
-                stepLabel = "1) DECO @ 6 m",
-                gas = rec.deco6mO2,
-                detail = "${rec.deco6mO2.o2Pct}% O₂ · MOD ${UnitsAndPressure.formatDepth(6.0, units)} · ${cylTag(rec.deco6mO2)}",
+                stepLabel = mixLabel,
+                gas = rec.bottomGas,
+                detail = "MOD ${UnitsAndPressure.formatDepth(rec.modM, units)} · ppO₂ ${String.format(Locale.US, "%.2f", rec.ppO2AtMaxDepth)} bar · ${cylTag(rec.bottomGas)}",
                 accent = DecoGreen,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
-            BestGasBottleTile(
-                stepLabel = "2) DECO @ 21 m",
-                gas = rec.deco21mEan50,
-                detail = "${rec.deco21mEan50.o2Pct}% O₂ · MOD ${UnitsAndPressure.formatDepth(21.0, units)} · ${cylTag(rec.deco21mEan50)}",
-                accent = DiveOrange,
-                modifier = Modifier.weight(1f)
-            )
+        }
+        return
+    }
+
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val deco6m = rec.deco6mO2
+        val deco21m = rec.deco21mEan50
+        if (deco6m != null && deco21m != null) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BestGasBottleTile(
+                    stepLabel = "1) DECO @ 6 m",
+                    gas = deco6m,
+                    detail = "${deco6m.o2Pct}% O₂ · MOD ${UnitsAndPressure.formatDepth(6.0, units)} · ${cylTag(deco6m)}",
+                    accent = DecoGreen,
+                    modifier = Modifier.weight(1f)
+                )
+                BestGasBottleTile(
+                    stepLabel = "2) DECO @ 21 m",
+                    gas = deco21m,
+                    detail = "${deco21m.o2Pct}% O₂ · MOD ${UnitsAndPressure.formatDepth(21.0, units)} · ${cylTag(deco21m)}",
+                    accent = DiveOrange,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BestGasBottleTile(

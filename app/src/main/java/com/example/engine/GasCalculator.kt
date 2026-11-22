@@ -164,24 +164,115 @@ object GasCalculator {
     }
 
     /**
+     * Computes the best Recreational (REC) breathing gas (Air or Nitrox EAN only — never Trimix or DECO).
+     * Defaults to EAN32 (32% O2) whenever within the bottom ppO2 limit; for deeper REC depths (< 40m)
+     * exceeding EAN32's MOD, automatically steps down to the richest safe Nitrox (EAN) or Air (21% O2).
+     */
+    private fun computeRecreationalMix(
+        maxDepthM: Double,
+        general: GeneralSettings,
+        dive: DiveSettings,
+        env: Environment,
+        existingGases: List<Gas>
+    ): Gas {
+        val depth = maxDepthM.coerceAtLeast(3.0)
+        val pAmb = UnitsAndPressure.ambientPressure(depth, env)
+        val recCyl = resolveCylinder("best_bottom", GasRole.BOTTOM, 1, existingGases)
+
+        // Default REC Best Gas Mix: EAN32 if within bottom ppO2 limit
+        val maxSafeO2Pct = floor((dive.ppO2Bottom / pAmb) * 100.0).toInt().coerceIn(21, 32)
+        val chosenO2Pct = if (maxSafeO2Pct >= 32) {
+            32
+        } else if (general.standardMixesOnly) {
+            listOf(32, 28, 21).firstOrNull { it <= maxSafeO2Pct } ?: 21
+        } else {
+            maxSafeO2Pct
+        }
+        return Gas.fromPercent(
+            id = "best_bottom",
+            o2Pct = chosenO2Pct,
+            hePct = 0,
+            role = GasRole.BOTTOM,
+            cylinder = recCyl
+        )
+    }
+
+    /**
      * Algorithmically computes the optimal gas mix for EVERY stage of the dive:
-     * 1) MOD Bottom Gas Mix (for maxDepthM, enforcing ppO2, END, ppN2, and Gas Density)
-     * 2) Travel Gas Mix (normoxic descent & mid-depth bridge computed for the dive's depth & bottom gas)
-     * 3) Deep DECO Stage (when depth > 54m with Helium, enforcing ICD + END + Density)
-     * 4) Mid DECO Bottle @ 21m (EAN50 at 1.60 bar, dynamically adapted if ppO2Deco < 1.56)
-     * 5) Shallow DECO Bottle @ 6m (100% O2 at 1.60 bar, dynamically adapted if ppO2Deco < 1.58)
-     * All cylinders default to 12L (2×12L bottom, 1×12L travel/deco) unless customized by the user.
+     * - If Open-Circuit, maxDepth < 40m, and the dive profile is within NDL -> REC Recreational Dive:
+     *   proposes ONLY Air / Nitrox (EAN32 default) with NO DECO gases and NO Trimix.
+     * - Otherwise -> Technical (TEC) Dive Kit:
+     *   1) MOD Bottom Gas Mix (for maxDepthM, enforcing ppO2, END, ppN2, and Gas Density)
+     *   2) Travel Gas Mix (normoxic descent & mid-depth bridge computed for the dive's depth & bottom gas)
+     *   3) Deep DECO Stage (when depth > 54m with Helium, enforcing ICD + END + Density)
+     *   4) Mid DECO Bottle @ 21m (EAN50 at 1.60 bar, dynamically adapted if ppO2Deco < 1.56)
+     *   5) Shallow DECO Bottle @ 6m (100% O2 at 1.60 bar, dynamically adapted if ppO2Deco < 1.58)
+     * All cylinders default to 12L unless customized by the user.
      */
     fun recommendBestMix(
         maxDepthM: Double,
         general: GeneralSettings,
         dive: DiveSettings,
         existingGases: List<Gas> = emptyList(),
-        alerts: AlertSettings = AlertSettings()
+        alerts: AlertSettings = AlertSettings(),
+        levels: List<DiveLevel> = emptyList(),
+        previousTissues: TissueState? = null,
+        surfaceIntervalMin: Double = 0.0,
+        consumption: ConsumptionSettings = ConsumptionSettings()
     ): MixRecommendation {
         val env = UnitsAndPressure.buildEnvironment(general)
         val notes = mutableListOf<String>()
-        val depth = maxDepthM.coerceAtLeast(3.0)
+        val validLevels = levels.filter { it.depthM > 0.0 && it.timeMin > 0.0 }
+        val depth = (validLevels.maxOfOrNull { it.depthM } ?: maxDepthM).coerceAtLeast(3.0)
+
+        // REC Recreational Dive Check: under 40m AND within NDL (no decompression stops)
+        if (general.planningType == PlanningType.OPEN_CIRCUIT && depth < 40.0 && validLevels.isNotEmpty()) {
+            val recGas = computeRecreationalMix(depth, general, dive, env, existingGases)
+            val probeInput = DivePlanInput(
+                general = general.copy(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
+                dive = dive,
+                consumption = consumption,
+                alerts = alerts,
+                gases = listOf(recGas),
+                levels = validLevels.map { it.copy(gasId = null) },
+                previousTissues = previousTissues,
+                surfaceIntervalMin = surfaceIntervalMin
+            )
+            val probe = DivePlannerEngine.planDive(
+                input = probeInput,
+                includeContingencies = false,
+                recordTimeline = false
+            )
+            val isWithinNdl = probe.abortedReason == null &&
+                probe.firstStopM == 0 &&
+                probe.totalDecoMin <= 1e-6
+
+            if (isWithinNdl) {
+                val recMetrics = gasMetrics(recGas, depth, env, dive)
+                val recNotes = listOf(
+                    "REC Recreational Dive (< 40m, within NDL): ${recGas.displayName} selected (Air / Nitrox only — no DECO bottles or Trimix)."
+                )
+                return MixRecommendation(
+                    bottomGas = recGas,
+                    travelGas = null,
+                    travelGasDisplay = recGas,
+                    travelRangeNote = "0 m → ${depth.roundToInt()} m (single REC tank)",
+                    deco6mO2 = null,
+                    deco21mEan50 = null,
+                    deepDecoGas = null,
+                    decoGases = emptyList(),
+                    plannerGases = listOf(recGas),
+                    modM = recMetrics.modM,
+                    minDepthM = recMetrics.minDepthM,
+                    endAtMaxDepthM = recMetrics.endM,
+                    densityAtMaxDepthGL = recMetrics.densityGL,
+                    ppO2AtMaxDepth = recMetrics.ppO2,
+                    notes = recNotes,
+                    isRecreational = true
+                )
+            }
+        }
+
         val bottomRole = if (general.planningType == PlanningType.CCR) GasRole.DILUENT else GasRole.BOTTOM
         val bottomCyl = resolveCylinder("best_bottom", bottomRole, 2, existingGases)
 

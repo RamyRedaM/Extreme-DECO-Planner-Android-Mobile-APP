@@ -259,14 +259,55 @@ object DivePlannerEngine {
         )
 
         // ---- 3. Ascent & Decompression Schedule (Section 8.4) ----
-        // Determine initial first stop depth with GF Low
-        var firstStop = UnitsAndPressure.ceilToIncrement(
-            TissuesAndBuhlmann.ceilingDepthM(
-                tissues, gfLow, coeffs, env, input.general.decoModel, input.general.vpmConservatism
-            ),
-            stopInc
-        )
-        if (firstStop in 1 until lastStopM) firstStop = lastStopM
+        // Standard Bühlmann GF NDL rule: a dive is within NDL if a direct ascent to surface keeps
+        // ceilingDepthM(tissues, gfHigh) <= 0m; GF Low only anchors firstStop once NDL is exceeded.
+        val isWithinNdl = run {
+            var sim = tissues
+            var d = currentDepth
+            if (TissuesAndBuhlmann.ceilingDepthM(
+                    sim, gfHigh, coeffs, env, input.general.decoModel, input.general.vpmConservatism
+                ) > 0.0
+            ) {
+                return@run false
+            }
+            if (d > lastStopM) {
+                val dt1 = (d - lastStopM) / ascentRate
+                val sp1 = activeSetpoint((d + lastStopM) / 2.0, isDescent = false, isDeco = false)
+                sim = TissuesAndBuhlmann.advanceTissues(sim, d, lastStopM.toDouble(), dt1, currentGas, env, coeffs, isCcr, sp1)
+                d = lastStopM.toDouble()
+                if (TissuesAndBuhlmann.ceilingDepthM(
+                        sim, gfHigh, coeffs, env, input.general.decoModel, input.general.vpmConservatism
+                    ) > 0.0
+                ) {
+                    return@run false
+                }
+            }
+            if (d > 0.0) {
+                val dt2 = d / surfaceRate
+                val sp2 = activeSetpoint(d / 2.0, isDescent = false, isDeco = true)
+                sim = TissuesAndBuhlmann.advanceTissues(sim, d, 0.0, dt2, currentGas, env, coeffs, isCcr, sp2)
+                if (TissuesAndBuhlmann.ceilingDepthM(
+                        sim, gfHigh, coeffs, env, input.general.decoModel, input.general.vpmConservatism
+                    ) > 0.0
+                ) {
+                    return@run false
+                }
+            }
+            true
+        }
+
+        // Determine initial first stop depth with GF Low only when NDL is exceeded
+        var firstStop = if (isWithinNdl) {
+            0
+        } else {
+            val rawFirst = UnitsAndPressure.ceilToIncrement(
+                TissuesAndBuhlmann.ceilingDepthM(
+                    tissues, gfLow, coeffs, env, input.general.decoModel, input.general.vpmConservatism
+                ),
+                stopInc
+            )
+            if (rawFirst in 1 until lastStopM) lastStopM else rawFirst
+        }
 
         // Check if NDL dive (try ascending to surface, checking ceiling along the way)
         var depth = currentDepth
@@ -327,20 +368,24 @@ object DivePlannerEngine {
             }
         }
 
-        if (firstStop <= 0) {
-            // Try ascending directly to lastStopM, then check ceiling with gfHigh
+        if (isWithinNdl) {
+            // Pure NDL dive -> direct ascent to lastStopM at ascentRate, then to surface at surfaceRate
+            if (depth > lastStopM) {
+                val spAsc = activeSetpoint((depth + lastStopM) / 2.0, isDescent = false, isDeco = false)
+                appendSegment(SegmentType.ASCENT, depth, lastStopM.toDouble(), (depth - lastStopM) / ascentRate, currentGas, spAsc)
+                depth = lastStopM.toDouble()
+            }
+            if (depth > 0.0) {
+                val spSurf = activeSetpoint(depth / 2.0, isDescent = false, isDeco = true)
+                appendSegment(SegmentType.ASCENT, depth, 0.0, depth / surfaceRate, currentGas, spSurf)
+                depth = 0.0
+            }
+        } else if (firstStop <= 0) {
+            // NDL exceeded without deep GF Low ceiling -> start deco at lastStopM
             if (depth > lastStopM) {
                 ascendWithSwitches(lastStopM.toDouble(), ascentRate, isDecoPhase = false)
             }
-            val ceilSurf = TissuesAndBuhlmann.ceilingDepthM(
-                tissues, gfHigh, coeffs, env, input.general.decoModel, input.general.vpmConservatism
-            )
-            if (firstStop <= 0 && ceilSurf <= 0.0) {
-                // Pure NDL dive -> ascend from depth to 0 at surfaceRate
-                val spSurf = activeSetpoint(0.0, isDescent = false, isDeco = true)
-                appendSegment(SegmentType.ASCENT, depth, 0.0, depth / surfaceRate, currentGas, spSurf)
-                depth = 0.0
-            } else if (firstStop <= 0) {
+            if (firstStop <= 0) {
                 firstStop = lastStopM
             }
         }
@@ -609,7 +654,11 @@ object DivePlannerEngine {
                     general = baseInput.general,
                     dive = baseInput.dive,
                     existingGases = baseInput.gases,
-                    alerts = baseInput.alerts
+                    alerts = baseInput.alerts,
+                    levels = entry.levels,
+                    previousTissues = carryTissues,
+                    surfaceIntervalMin = si,
+                    consumption = baseInput.consumption
                 ).plannerGases
             } else {
                 baseInput.gases

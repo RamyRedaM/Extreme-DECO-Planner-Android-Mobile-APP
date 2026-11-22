@@ -388,8 +388,8 @@ data class MixRecommendation(
     val travelGas: Gas?,
     val travelGasDisplay: Gas,
     val travelRangeNote: String,
-    val deco6mO2: Gas,
-    val deco21mEan50: Gas,
+    val deco6mO2: Gas?,
+    val deco21mEan50: Gas?,
     val deepDecoGas: Gas? = null,
     val decoGases: List<Gas>,
     val plannerGases: List<Gas>,
@@ -398,7 +398,8 @@ data class MixRecommendation(
     val endAtMaxDepthM: Double,
     val densityAtMaxDepthGL: Double,
     val ppO2AtMaxDepth: Double,
-    val notes: List<String>
+    val notes: List<String>,
+    val isRecreational: Boolean = false
 )
 
 data class ContingencySummary(

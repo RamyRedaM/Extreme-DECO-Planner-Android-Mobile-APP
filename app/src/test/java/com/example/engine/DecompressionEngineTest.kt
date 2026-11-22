@@ -198,9 +198,9 @@ class DecompressionEngineTest {
 
         // 1. Deep 65m dive: Travel + Helium MOD Bottom + Deep Deco + 21m EAN50 + 6m O2, ALL default 12L
         val rec65 = GasCalculator.recommendBestMix(65.0, general, dive)
-        assertEquals(100, rec65.deco6mO2.o2Pct)
+        assertEquals(100, rec65.deco6mO2!!.o2Pct)
         assertEquals(6.0, rec65.deco6mO2.modOverrideM)
-        assertEquals(50, rec65.deco21mEan50.o2Pct)
+        assertEquals(50, rec65.deco21mEan50!!.o2Pct)
         assertEquals(21.0, rec65.deco21mEan50.modOverrideM)
         assertTrue("65m MOD bottom gas should contain helium", rec65.bottomGas.hePct > 0)
         assertTrue("65m dive should include a deep helium deco stage", rec65.deepDecoGas != null && rec65.deepDecoGas.hePct > 0)
@@ -230,8 +230,8 @@ class DecompressionEngineTest {
 
         // 2. Mid 40m technical dive: verify 12L defaults, richer travel gas on descent, and safe MOD
         val rec40 = GasCalculator.recommendBestMix(40.0, general, dive)
-        assertEquals(100, rec40.deco6mO2.o2Pct)
-        assertEquals(50, rec40.deco21mEan50.o2Pct)
+        assertEquals(100, rec40.deco6mO2!!.o2Pct)
+        assertEquals(50, rec40.deco21mEan50!!.o2Pct)
         assertTrue("40m travel gas should be richer than bottom gas", rec40.travelGasDisplay.o2Pct > rec40.bottomGas.o2Pct)
         assertTrue("40m MOD mix should be safe at 40m", rec40.modM >= 39.0)
         assertTrue("All 40m bottles default to 12L", rec40.plannerGases.all { it.cylinder.waterVolumeL == 12.0 })
@@ -245,9 +245,9 @@ class DecompressionEngineTest {
             }
         }
         val rec50Preserved = GasCalculator.recommendBestMix(50.0, general, dive, existingGases = customized)
-        assertEquals(7.0, rec50Preserved.deco6mO2.cylinder.waterVolumeL, 0.001)
+        assertEquals(7.0, rec50Preserved.deco6mO2!!.cylinder.waterVolumeL, 0.001)
         assertEquals(15.0, rec50Preserved.bottomGas.cylinder.waterVolumeL, 0.001)
-        assertEquals(12.0, rec50Preserved.deco21mEan50.cylinder.waterVolumeL, 0.001)
+        assertEquals(12.0, rec50Preserved.deco21mEan50!!.cylinder.waterVolumeL, 0.001)
     }
 
     @Test
@@ -318,5 +318,71 @@ class DecompressionEngineTest {
         assertTrue("Dangerous ppO2 must raise critical error", dangerousPlan.hasErrors)
         assertTrue("All emitted alerts must be critical ERRORs", dangerousPlan.alerts.all { it.level == AlertLevel.ERROR })
         assertTrue("Should flag PPO2_HIGH_BOTTOM", dangerousPlan.alerts.any { it.code == AlertCode.PPO2_HIGH_BOTTOM })
+    }
+
+    @Test
+    fun testRecreationalDiveUnder40mWithinNdlUsesEan32NoDecoNoTrimix() {
+        val general = GeneralSettings(gasSelectionMode = GasSelectionMode.BEST_GAS_MIX)
+        val dive = DiveSettings()
+
+        // 1. 25m / 20min (< 40m, within NDL) -> REC dive, default EAN32, no DECO, no Trimix
+        val rec25 = GasCalculator.recommendBestMix(
+            maxDepthM = 25.0,
+            general = general,
+            dive = dive,
+            levels = listOf(DiveLevel("l25", 25.0, 20.0))
+        )
+        assertTrue("25m/20min should be classified as REC Recreational Dive", rec25.isRecreational)
+        assertEquals("Default REC best mix must be EAN32", 32, rec25.bottomGas.o2Pct)
+        assertEquals("REC dive must never use helium/trimix", 0, rec25.bottomGas.hePct)
+        assertTrue("REC dive must not propose DECO gases", rec25.decoGases.isEmpty())
+        assertEquals("REC dive must only include 1 bottom gas", 1, rec25.plannerGases.size)
+        assertEquals(null, rec25.deco6mO2)
+        assertEquals(null, rec25.deco21mEan50)
+
+        // 2. 36m / 8min (< 40m, within NDL, deeper than EAN32 MOD at 1.4 bar) -> safe Nitrox (no Trimix, no DECO)
+        val rec36 = GasCalculator.recommendBestMix(
+            maxDepthM = 36.0,
+            general = general,
+            dive = dive,
+            levels = listOf(DiveLevel("l36", 36.0, 8.0))
+        )
+        assertTrue("36m/8min should be classified as REC Recreational Dive", rec36.isRecreational)
+        assertTrue("36m REC gas must be Air or Nitrox (21-31% O2)", rec36.bottomGas.o2Pct in 21..31)
+        assertEquals("36m REC dive must NOT propose trimix", 0, rec36.bottomGas.hePct)
+        assertTrue("36m REC dive must NOT propose DECO gases", rec36.decoGases.isEmpty())
+
+        val plan36 = DivePlannerEngine.planDive(
+            DivePlanInput(
+                general = general,
+                dive = dive,
+                gases = rec36.plannerGases,
+                levels = listOf(DiveLevel("l36", 36.0, 8.0))
+            )
+        )
+        assertEquals("36m/8min REC dive has zero deco stops", 0.0, plan36.totalDecoMin, 0.001)
+        assertTrue("36m/8min REC dive has zero critical errors (got: ${plan36.alerts})", plan36.alerts.isEmpty())
+
+        // 3. 30m / 45min (< 40m, EXCEEDS NDL) -> TEC decompression dive with DECO gases
+        val tec30 = GasCalculator.recommendBestMix(
+            maxDepthM = 30.0,
+            general = general,
+            dive = dive,
+            levels = listOf(DiveLevel("l30_deco", 30.0, 45.0))
+        )
+        assertTrue("30m/45min exceeds NDL so it must be a TEC dive", !tec30.isRecreational)
+        assertTrue("TEC dive must propose DECO gases", tec30.decoGases.isNotEmpty())
+        assertEquals(100, tec30.deco6mO2!!.o2Pct)
+        assertEquals(50, tec30.deco21mEan50!!.o2Pct)
+
+        // 4. 40m / 6min (40m is NOT under 40m) -> TEC dive
+        val tec40 = GasCalculator.recommendBestMix(
+            maxDepthM = 40.0,
+            general = general,
+            dive = dive,
+            levels = listOf(DiveLevel("l40_short", 40.0, 6.0))
+        )
+        assertTrue("40m dive is not under 40m, so it remains a TEC dive", !tec40.isRecreational)
+        assertTrue("40m dive proposes DECO gases", tec40.decoGases.isNotEmpty())
     }
 }
