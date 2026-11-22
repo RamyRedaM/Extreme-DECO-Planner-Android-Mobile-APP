@@ -109,7 +109,7 @@ You can also [build the app from source](#build-from-source).
 - Configurable descent, ascent, deco ascent and final ascent rates
 - Last stop at 3 m or 6 m, detailed or compact (stops only) plan style
 - Gas breaks on high-oxygen deco
-- Water salinity: Fresh, EN13319, Salt, Red Sea or custom density
+- Water salinity: Fresh, EN13319, Salt, Red Sea (editable from 1020 to 1040 kg/m³) or custom density
 - Dive site altitude, with an option for divers who arrived at altitude less than 12 hours ago
 - Metric (m / L / bar / °C) or Imperial (ft / cuft / psi / °F) units
 
@@ -124,7 +124,8 @@ You can also [build the app from source](#build-from-source).
 - MOD, minimum (hypoxic) depth, END, EAD, PPN2 and gas density for every gas
 - Gas consumption per segment from bottom and deco RMV
 - Bottom gas reserve rules: Thirds, Quarters, Half, or Rock-Bottom (2× stress)
-- Deco gas reserve rules: 1.5× required, or lost-gas scenario
+- Deco gas reserve rules: 1.5× required, or a real **lost-gas scenario** (the dive is replanned with each deco gas lost in turn, and every deco gas carries its worst-case need × the stress factor)
+- Rock-bottom reserve for the bottom gas: two divers at stress breathing rate, from max depth to the first gas switch on the ascent
 - Cylinder sizes and counts, auto-sized from your SAC rate in Best GAS Mix mode
 
 ### Surface intervals
@@ -299,10 +300,14 @@ In **Best GAS Mix** mode, for the planned depth the app:
 4. Adds a **travel gas** when the bottom mix is hypoxic at the surface.
 5. Chooses **deco gases** for the depth (for example EAN50 and oxygen), with helium-based intermediate deco gases on deep dives, checked for ICD.
 6. Sizes the **cylinders** from your SAC rate.
+7. Avoids impractical fills: helium under 10% is dropped (plain nitrox) or raised to 10%.
 
 | Metric | Meaning |
 |---|---|
 | MOD | Deepest depth where ppO2 stays within the limit |
+
+On the Gases tab, each gas's END and density are shown where it is breathed: bottom gas at max depth, travel gas at its MOD (capped at max depth), deco gas at its switch depth.
+
 | Minimum depth | Shallowest depth where the gas is not hypoxic |
 | END | Equivalent narcotic depth |
 | Density | Gas density at depth, in g/L |
@@ -315,7 +320,7 @@ Found on the **Planner** tab, below the contingency plans. It takes the tissue s
 
 **Inputs**
 - Surface interval from 0 to 12 hours, with a slider and quick presets: 30 min, 1 h, 1.5 h, 2 h, 3 h, 4 h, 6 h and 12 h
-- Next dive depth (9 to 60 m, in 3 m steps) and the gas for the next dive
+- Next dive depth (9 to 60 m, in 3 m steps) and the gas for the next dive: by default the next dive's own planned gas (or EAN32 / Air when no next dive is planned), or pick Air or EAN32
 
 **Results**
 
@@ -356,7 +361,7 @@ A plan with any CRITICAL alert is marked as having errors. The plan is still sho
 | **Hypoxia** | ppO2 below your PPO2 Min, or a hypoxic bottom mix with no travel gas that covers the surface: CRITICAL |
 | **MOD** | Gas used deeper than its 1.60 bar MOD: CRITICAL. Deeper than the MOD for your own limit: HIGH |
 | **Gas density** | Above 6.2 g/L: CRITICAL. Above your density limit (default 5.2 g/L): HIGH |
-| **Narcosis (END / ppN2)** | END above 45 m: CRITICAL. Above 40 m: HIGH. Above your END limit: MEDIUM |
+| **Narcosis (END / ppN2)** | END above 45 m: CRITICAL. Above 40 m: HIGH. Above your END limit: MEDIUM. Deco gas ppN2 above your PPN2 Max Deco: MEDIUM |
 | **CNS oxygen clock** | Above 100% (or your error limit): CRITICAL. Above 80% (or your warning limit): HIGH. 50% or more: LOW |
 | **OTU (lung oxygen dose)** | Above your per-dive limit, or more than 850 OTU in a day: HIGH. Daily total above your per-dive limit: MEDIUM |
 | **Oxygen breaks** | More than 20 minutes of high-ppO2 deco without an air break: HIGH |
@@ -486,6 +491,7 @@ Run the unit tests from Android Studio: right-click `app/src/test` and choose **
 - Recreational mode (under 40 m within NDL: EAN32, no trimix, no deco gases)
 - The four alert levels, including the CNS 80% single-dive warning and the new HIGH / MEDIUM checks
 - The ZHL-16C Surface Interval Calculator
+- One test per engine audit fix (CCR descent setpoint, next-dive gas, rock-bottom, lost-gas, travel gas display, Red Sea density, deco ppN2 alert, practical helium)
 
 Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
 
