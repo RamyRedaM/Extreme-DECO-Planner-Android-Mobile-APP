@@ -66,4 +66,9 @@ object Constants {
         10 to 70,  // TX 10/70
         8 to 80    // TX 8/80
     )
+
+    /** CCR Best GAS Mix: diluent ppO2 at the maximum depth (keeps a diluent flush below the bottom setpoint). */
+    const val CCR_DILUENT_PPO2 = 1.10
+    /** CCR bailout: minutes of problem solving at depth before the open-circuit ascent starts. */
+    const val CCR_BAILOUT_PROBLEM_SOLVING_MIN = 2.0
 }

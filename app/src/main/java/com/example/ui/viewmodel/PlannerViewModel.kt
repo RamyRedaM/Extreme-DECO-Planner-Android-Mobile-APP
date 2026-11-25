@@ -301,6 +301,8 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
         }
         val msg = if (rec.isRecreational) {
             "REC Dive (Within NDL): Best GAS Mix ${rec.bottomGas.displayName} (Air / Nitrox only)"
+        } else if (rec.bailoutBottomGas != null) {
+            "CCR Best GAS Mix: diluent ${rec.bottomGas.displayName} · bailout ${rec.decoGases.fold(rec.bailoutBottomGas.displayName) { acc, g -> "$acc · ${g.displayName}" }}"
         } else {
             "Best GAS Mix active: 6m ${rec.deco6mO2?.displayName ?: "O2"} · 21m ${rec.deco21mEan50?.displayName ?: "EAN50"} · Travel ${rec.travelGasDisplay.displayName} · MOD ${rec.bottomGas.displayName}"
         }
@@ -454,6 +456,7 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
                             deco21mEan50 = rec.deco21mEan50?.let { syncGas(it) },
                             deepDecoGas = rec.deepDecoGas?.let { syncGas(it) },
                             decoGases = rec.decoGases.map { syncGas(it) },
+                            bailoutBottomGas = rec.bailoutBottomGas?.let { syncGas(it) },
                             plannerGases = finalGases
                         )
                     } else {

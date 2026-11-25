@@ -237,7 +237,10 @@ data class DivePlanInput(
     val previousCnsPct: Double = 0.0,
     val previousDailyOtu: Double = 0.0,
     val surfaceIntervalMin: Double = 0.0,
-    val previousMaxDepthM: Double? = null
+    val previousMaxDepthM: Double? = null,
+    /** Set only for a CCR open-circuit bailout plan: the plan starts at the first level depth
+     *  (no descent) and its runtime continues from this value. */
+    val bailoutStartRuntimeMin: Double? = null
 ) {
     companion object {
         fun defaultGases(): List<Gas> = listOf(
@@ -427,7 +430,9 @@ data class MixRecommendation(
     val densityAtMaxDepthGL: Double,
     val ppO2AtMaxDepth: Double,
     val notes: List<String>,
-    val isRecreational: Boolean = false
+    val isRecreational: Boolean = false,
+    /** CCR only: open-circuit bailout gas breathable at the maximum depth. */
+    val bailoutBottomGas: Gas? = null
 )
 
 data class ContingencySummary(
@@ -463,7 +468,9 @@ data class DivePlanResult(
     val alerts: List<PlanAlert>,
     val contingencies: List<ContingencySummary> = emptyList(),
     val ccrBailout: ContingencySummary? = null,
-    val abortedReason: String? = null
+    val abortedReason: String? = null,
+    /** State at the end of each bottom level (used to plan CCR bailout from the worst point). */
+    val levelEnds: List<LevelEndState> = emptyList()
 ) {
     val hasErrors: Boolean get() = abortedReason != null || alerts.any { it.level == AlertLevel.CRITICAL }
     val hasHighAlerts: Boolean get() = alerts.any { it.level == AlertLevel.HIGH }
@@ -505,4 +512,27 @@ data class MultiDiveDayResult(
     val postSurfaceIntervalTissues: List<TissueState>, // tissues right at start of each dive
     val totalDailyOtu: Double,
     val peakEndCnsPct: Double
+)
+
+
+/** Diver state at the end of one bottom level. */
+data class LevelEndState(
+    val levelIndex: Int,
+    val depthM: Double,
+    val runtimeMin: Double,
+    val segmentIndex: Int,
+    val tissues: TissueState
+)
+
+/** Worst-case CCR open-circuit bailout over every bottom level end. */
+data class CcrBailoutAnalysis(
+    val worst: DivePlanResult?,
+    val worstLevelIndex: Int,
+    /** Highest litres (with reserve) each gas needs across all bailout scenarios. */
+    val requiredById: Map<String, Double>,
+    val diluentId: String,
+    /** Deepest bailout point where no bailout gas was breathable and the diluent had to be used on OC. */
+    val diluentFallbackDepthM: Double?,
+    /** Deepest bailout point whose bailout plan could not be completed. */
+    val abortedDepthM: Double?
 )

@@ -50,6 +50,7 @@ jobs:
           python3 - << 'PY'
           import glob, xml.etree.ElementTree as ET
           total = failed = 0
+          diag = []
           for f in glob.glob("app/build/test-results/testDebugUnitTest/*.xml"):
               root = ET.parse(f).getroot()
               for tc in root.iter("testcase"):
@@ -59,9 +60,15 @@ jobs:
                       msg = (fail.get("message") or "").replace("\n", " ")[:900]
                       print(f"::error title={tc.get('classname').split('.')[-1]}.{tc.get('name')}::{msg}")
               out = root.findtext("system-out") or ""
-              for line in out.splitlines():
-                  if line.startswith("DIAG"):
-                      print(f"::notice title=diag::{line[:900]}")
+              diag.extend(l for l in out.splitlines() if l.startswith("DIAG"))
+          chunk = ""
+          for l in diag:
+              if chunk and len(chunk) + len(l) > 3000:
+                  print(f"::notice title=diag::{chunk}")
+                  chunk = ""
+              chunk += ("%0A" if chunk else "") + l
+          if chunk:
+              print(f"::notice title=diag::{chunk}")
           print(f"::notice title=tests::{total} tests, {failed} failed")
           PY
 

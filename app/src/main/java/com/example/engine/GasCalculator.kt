@@ -318,6 +318,10 @@ object GasCalculator {
             }
         }
 
+        if (general.planningType == PlanningType.CCR) {
+            return recommendCcrBestMix(depth, general, dive, env, existingGases, alerts)
+        }
+
         val bottomRole = if (general.planningType == PlanningType.CCR) GasRole.DILUENT else GasRole.BOTTOM
         val bottomCyl = resolveCylinder("best_bottom", bottomRole, 2, existingGases)
 
@@ -538,6 +542,157 @@ object GasCalculator {
             densityAtMaxDepthGL = metrics.densityGL,
             ppO2AtMaxDepth = metrics.ppO2,
             notes = notes
+        )
+    }
+
+    private fun cylinderFor(slotId: String, role: GasRole, existingGases: List<Gas>, default: CylinderConfig): CylinderConfig =
+        existingGases.firstOrNull { it.id == slotId }?.cylinder
+            ?: existingGases.firstOrNull { it.role == role }?.cylinder
+            ?: default
+
+    /** Snaps a mix to the richest standard fill that still meets END and density at depth (Standard mixes only). */
+    private fun snapToStandard(gas: Gas, depthM: Double, env: Environment, dive: DiveSettings): Gas? =
+        Constants.STANDARD_BOTTOM_MIXES
+            .map { (o2p, hep) -> Gas.fromPercent(gas.id, o2p, hep, gas.role, gas.enabled, gas.modOverrideM, gas.cylinder) }
+            .filter { g ->
+                g.o2 <= gas.o2 + 0.005 &&
+                    endM(g, depthM, env, dive.o2Narcotic) <= dive.maxEndM + 1.0 &&
+                    densityGL(g, depthM, env) <= dive.maxGasDensityGL + 0.1
+            }
+            .maxByOrNull { it.o2 }
+
+    /**
+     * CCR Best GAS Mix.
+     * Diluent: sized for ppO2 CCR_DILUENT_PPO2 at the maximum depth (never above air), helium for END, ppN2 and density.
+     * Bailout (open circuit, role BAILOUT): a bottom bailout breathable at the maximum depth (same rules as the OC bottom mix),
+     * a deep bailout stage (> 54 m with helium, ICD-checked), EAN50 at 21 m and O2 at 6 m. No travel gas: the descent is on the loop.
+     * Cylinder counts are sized later from the worst-case bailout plan (DivePlannerEngine).
+     */
+    private fun recommendCcrBestMix(
+        depth: Double,
+        general: GeneralSettings,
+        dive: DiveSettings,
+        env: Environment,
+        existingGases: List<Gas>,
+        alerts: AlertSettings
+    ): MixRecommendation {
+        val notes = mutableListOf<String>()
+        val pMax = UnitsAndPressure.ambientPressure(depth, env)
+
+        // 1. Diluent
+        val dilCyl = cylinderFor("best_diluent", GasRole.DILUENT, existingGases, CylinderConfig(3.0, 200.0, 1))
+        var diluent = computeOptimalMixAtDepth(
+            id = "best_diluent",
+            targetDepthM = depth,
+            ppO2Limit = Constants.CCR_DILUENT_PPO2,
+            ppN2Limit = dive.ppN2Max,
+            role = GasRole.DILUENT,
+            general = general,
+            dive = dive,
+            env = env,
+            minO2 = 0.05,
+            maxO2 = 0.21,
+            cylinder = dilCyl
+        )
+        if (general.standardMixesOnly) {
+            snapToStandard(diluent, depth, env, dive)?.let { diluent = it }
+        }
+        if (densityGL(diluent, depth, env) > dive.maxGasDensityGL) {
+            notes += "Diluent density exceeds ${dive.maxGasDensityGL} g/L at ${depth.roundToInt()} m; reduce depth or increase helium."
+        }
+
+        // 2. Bottom bailout (open circuit at the maximum depth)
+        val bbCyl = cylinderFor("best_bailout_bottom", GasRole.BAILOUT, existingGases.filter { it.id == "best_bailout_bottom" }, CylinderConfig(11.0, 200.0, 1))
+        var bottomBailout = computeOptimalMixAtDepth(
+            id = "best_bailout_bottom",
+            targetDepthM = depth,
+            ppO2Limit = dive.ppO2Bottom,
+            ppN2Limit = dive.ppN2Max,
+            role = GasRole.BAILOUT,
+            general = general,
+            dive = dive,
+            env = env,
+            minO2 = 0.08,
+            maxO2 = 0.40,
+            cylinder = bbCyl
+        )
+        if (general.standardMixesOnly) {
+            snapToStandard(bottomBailout, depth, env, dive)?.let { bottomBailout = it }
+        }
+
+        // 3. Deep bailout stage (> 54 m with helium), ICD-checked against the bottom bailout
+        val deepBailout: Gas? = if (depth > 54.0 && bottomBailout.hePct >= 20) {
+            val deepSwitchM = (floor(minOf(39.0, depth - 15.0) / 3.0) * 3.0).coerceIn(27.0, 39.0)
+            var cand = computeOptimalMixAtDepth(
+                id = "best_bailout_deep",
+                targetDepthM = deepSwitchM,
+                ppO2Limit = dive.ppO2Deco,
+                ppN2Limit = dive.ppN2MaxDeco,
+                role = GasRole.BAILOUT,
+                general = general,
+                dive = dive,
+                env = env,
+                minO2 = (bottomBailout.o2 + 0.08).coerceAtLeast(0.30),
+                maxO2 = 0.45,
+                cylinder = cylinderFor("best_bailout_deep", GasRole.BAILOUT, existingGases.filter { it.id == "best_bailout_deep" }, CylinderConfig(11.0, 200.0, 1)),
+                modOverrideM = deepSwitchM
+            )
+            var guard = 0
+            while (guard++ < 40 && cand.n2 >= 0.02) {
+                val icd = evaluateIcd(bottomBailout, cand, deepSwitchM, env, alerts)
+                if (!icd.violatesDeltaN2 && !icd.violatesRuleOfFifths) break
+                val nextHe = (cand.he + 0.01).coerceAtMost(1.0 - cand.o2)
+                cand = cand.copy(he = (nextHe * 100.0).roundToInt() / 100.0)
+            }
+            cand
+        } else {
+            null
+        }
+
+        // 4. Shallow bailout stages (same switch rules as the OC deco kit)
+        fun shallowStage(id: String, switchM: Double, standardPct: Int, standardMinPpO2: Double, lowPct: Int, highPct: Int): Gas {
+            val pct = if (dive.ppO2Deco >= standardMinPpO2) {
+                standardPct
+            } else {
+                floor((dive.ppO2Deco / UnitsAndPressure.ambientPressure(switchM, env)) * 100.0).toInt().coerceIn(lowPct, highPct)
+            }
+            return Gas.fromPercent(
+                id = id, o2Pct = pct, hePct = 0, role = GasRole.BAILOUT, modOverrideM = switchM,
+                cylinder = cylinderFor(id, GasRole.BAILOUT, existingGases.filter { it.id == id }, CylinderConfig(11.0, 200.0, 1))
+            )
+        }
+        val bailout21 = shallowStage("best_bailout_21m", 21.0, 50, 1.56, 32, 50)
+        val bailout6 = shallowStage("best_bailout_6m", 6.0, 100, 1.58, 50, 100)
+
+        val stages = buildList {
+            deepBailout?.let { add(it) }
+            if (depth > 21.0 && bottomBailout.o2Pct < bailout21.o2Pct) add(bailout21)
+            if (depth > 6.0 && bottomBailout.o2Pct < bailout6.o2Pct) add(bailout6)
+        }
+
+        val dilPpO2 = pMax * diluent.o2
+        notes += "CCR Best GAS Mix: diluent ${diluent.displayName} (ppO₂ ${"%.2f".format(dilPpO2)} bar at ${depth.roundToInt()} m) · " +
+            "bailout ${bottomBailout.displayName}" + stages.joinToString("") { " · ${it.displayName} @ ${it.modOverrideM?.roundToInt() ?: 0} m" } + "."
+        notes += "Bailout cylinders are sized from the worst-case open-circuit bailout (end of the bottom phase, stress RMV)."
+
+        val metrics = gasMetrics(diluent, depth, env, dive)
+        return MixRecommendation(
+            bottomGas = diluent,
+            travelGas = null,
+            travelGasDisplay = bottomBailout,
+            travelRangeNote = "OC bailout at ${depth.roundToInt()} m",
+            deco6mO2 = bailout6.takeIf { it in stages },
+            deco21mEan50 = bailout21.takeIf { it in stages },
+            deepDecoGas = deepBailout,
+            decoGases = stages,
+            plannerGases = listOf(diluent, bottomBailout) + stages,
+            modM = metrics.modM,
+            minDepthM = metrics.minDepthM,
+            endAtMaxDepthM = metrics.endM,
+            densityAtMaxDepthGL = metrics.densityGL,
+            ppO2AtMaxDepth = dilPpO2,
+            notes = notes,
+            bailoutBottomGas = bottomBailout
         )
     }
 

@@ -216,6 +216,64 @@ fun BestGasKitGrid(
         return
     }
 
+    val bailoutBottom = rec.bailoutBottomGas
+    if (bailoutBottom != null) {
+        // CCR: diluent on the loop + open-circuit bailout kit
+        Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BestGasBottleTile(
+                    stepLabel = "1) CCR Diluent",
+                    gas = rec.bottomGas,
+                    detail = "ppO₂ ${String.format(Locale.US, "%.2f", rec.ppO2AtMaxDepth)} bar at max · END ${UnitsAndPressure.formatDepth(rec.endAtMaxDepthM, units)} · ${cylTag(rec.bottomGas)}",
+                    accent = TrimixViolet,
+                    modifier = Modifier.weight(1f)
+                )
+                BestGasBottleTile(
+                    stepLabel = "2) Bottom Bailout (OC)",
+                    gas = bailoutBottom,
+                    detail = "${rec.travelRangeNote} · ${cylTag(bailoutBottom)}",
+                    accent = OceanLightBlue,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            var step = 3
+            rec.deepDecoGas?.let { deep ->
+                BestGasBottleTile(
+                    stepLabel = "${step++}) Deep Bailout @ ${UnitsAndPressure.formatDepth(deep.modOverrideM ?: 36.0, units)}",
+                    gas = deep,
+                    detail = "ICD-safe intermediate helium stage · ${cylTag(deep)}",
+                    accent = DeepNavyText,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            val b21 = rec.deco21mEan50
+            val b6 = rec.deco6mO2
+            if (b21 != null || b6 != null) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    b21?.let {
+                        BestGasBottleTile(
+                            stepLabel = "${step++}) Bailout @ 21 m",
+                            gas = it,
+                            detail = "${it.o2Pct}% O₂ · ${cylTag(it)}",
+                            accent = DiveOrange,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    b6?.let {
+                        BestGasBottleTile(
+                            stepLabel = "${step++}) Bailout @ 6 m",
+                            gas = it,
+                            detail = "${it.o2Pct}% O₂ · ${cylTag(it)}",
+                            accent = DecoGreen,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val deco6m = rec.deco6mO2
         val deco21m = rec.deco21mEan50

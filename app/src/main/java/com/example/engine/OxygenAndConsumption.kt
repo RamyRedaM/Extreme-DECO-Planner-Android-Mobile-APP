@@ -242,7 +242,8 @@ object OxygenAndConsumption {
         totalDecoMin: Double = 0.0,
         ndlMin: Double = Double.POSITIVE_INFINITY,
         totalRuntimeMin: Double = 0.0,
-        maxDepthM: Double = segments.maxOfOrNull { max(it.fromDepthM, it.toDepthM) } ?: 0.0
+        maxDepthM: Double = segments.maxOfOrNull { max(it.fromDepthM, it.toDepthM) } ?: 0.0,
+        ccrBailout: CcrBailoutAnalysis? = null
     ): List<PlanAlert> {
         val list = mutableListOf<PlanAlert>()
         val dive = input.dive
@@ -367,22 +368,32 @@ object OxygenAndConsumption {
                     AlertCode.CCR_BAILOUT_RISK,
                     "CCR plan has no open-circuit bailout or deco gases configured — configure dedicated OC bailout cylinders."
                 )
-            } else if (maxDepthM > 0.0) {
-                // Estimate minimum stress-RMV OC bailout ascent volume (2 min problem solving at max depth + ascent)
-                val pMax = UnitsAndPressure.ambientPressure(maxDepthM, env)
-                val pAvgAsc = (pMax + env.pSurfaceBar) / 2.0
-                val ascTimeMin = maxDepthM / dive.ascentRateToFirstStopMMin.coerceAtLeast(3.0)
-                val stressRmv = input.consumption.bottomRmvLMin * input.consumption.stressFactor
-                val minBailoutLitres = stressRmv * (
-                    (pMax / env.pSurfaceBar) * 2.0 + (pAvgAsc / env.pSurfaceBar) * ascTimeMin
-                )
-                val availableBailoutLitres = ocBailoutGases.sumOf { it.cylinder.availableLitres }
-                if (availableBailoutLitres < minBailoutLitres) {
+            } else if (ccrBailout != null) {
+                // Worst-case OC bailout from the end of each bottom level (planned by DivePlannerEngine)
+                ccrBailout.abortedDepthM?.let { d ->
                     list += PlanAlert(
                         AlertLevel.CRITICAL,
                         AlertCode.CCR_BAILOUT_RISK,
-                        "Insufficient CCR OC bailout gas: stress-RMV ascent requires ~${minBailoutLitres.roundToInt()} L, onboard bailout/deco cylinders hold ${availableBailoutLitres.roundToInt()} L."
+                        "Open-circuit bailout from ${d.roundToInt()} m cannot be completed with the configured gases and limits."
                     )
+                }
+                ccrBailout.diluentFallbackDepthM?.let { d ->
+                    list += PlanAlert(
+                        AlertLevel.HIGH,
+                        AlertCode.CCR_BAILOUT_RISK,
+                        "No bailout gas is breathable at ${d.roundToInt()} m on open circuit: the bailout plan has to use the diluent. Carry a bottom bailout cylinder."
+                    )
+                }
+                for (g in enabledGases) {
+                    val need = ccrBailout.requiredById[g.id] ?: continue
+                    val have = g.cylinder.availableLitres
+                    if (need > have + 0.5) {
+                        list += PlanAlert(
+                            AlertLevel.CRITICAL,
+                            AlertCode.CCR_BAILOUT_RISK,
+                            "Insufficient bailout gas ${g.displayName}: worst-case open-circuit bailout (end of bottom phase, stress RMV) needs ${need.roundToInt()} L, cylinders hold ${have.roundToInt()} L."
+                        )
+                    }
                 }
             }
         }
@@ -730,7 +741,7 @@ object OxygenAndConsumption {
         }
 
         // 12. Repetitive Dive Checks: Reverse Profile & Short Surface Interval (HIGH / MEDIUM)
-        if (input.previousTissues != null) {
+        if (input.previousTissues != null && input.bailoutStartRuntimeMin == null) {
             val prevDepth = input.previousMaxDepthM
             if (prevDepth != null && maxDepthM > prevDepth + 6.0) {
                 val deltaM = (maxDepthM - prevDepth).roundToInt()

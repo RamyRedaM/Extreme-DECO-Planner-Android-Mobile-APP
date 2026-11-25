@@ -55,6 +55,29 @@ class ParityFixturesTest {
             )
             out += "S9a" to day.diveResults[0]
             out += "S9b" to day.diveResults[1]
+
+            // S10: CCR Best GAS Mix 60 m / 25 min, plus its worst-case OC bailout
+            val ccrBest = GeneralSettings(planningType = PlanningType.CCR)
+            val rec = GasCalculator.recommendBestMix(60.0, ccrBest, DiveSettings(), levels = listOf(DiveLevel("a", 60.0, 25.0)))
+            val s10 = DivePlannerEngine.planDive(DivePlanInput(general = ccrBest, gases = rec.plannerGases, levels = listOf(DiveLevel("a", 60.0, 25.0))))
+            out += "S10" to s10
+            out += "S10bo" to DivePlannerEngine.ccrBailoutAnalysis(s10.input, s10.segments, s10.levelEnds)!!.worst!!
+
+            // S11: CCR user gases, multi-level 75 m / 15 then 50 m / 10, bailout from the worst level end
+            val s11 = DivePlannerEngine.planDive(
+                DivePlanInput(
+                    general = user.copy(planningType = PlanningType.CCR),
+                    gases = listOf(
+                        g("dil", 15, 55, GasRole.DILUENT, 3.0),
+                        g("bo_tx", 18, 45, GasRole.BAILOUT, 11.0, 200.0, 2),
+                        g("bo_50", 50, 0, GasRole.BAILOUT, 11.0),
+                        g("bo_o2", 100, 0, GasRole.BAILOUT, 7.0)
+                    ),
+                    levels = listOf(DiveLevel("a", 75.0, 15.0), DiveLevel("b", 50.0, 10.0))
+                )
+            )
+            out += "S11" to s11
+            out += "S11bo" to DivePlannerEngine.ccrBailoutAnalysis(s11.input, s11.segments, s11.levelEnds)!!.worst!!
             return out
         }
     }
@@ -67,5 +90,7 @@ class ParityFixturesTest {
         val si = TissuesAndBuhlmann.estimateSurfaceInterval(s2.endTissues, s2.oxygen.endCnsPct, 60.0, s2.env, 25.0, Gas.fromPercent("x", 32, 0, GasRole.BOTTOM), GeneralSettings())
         println("DIAG PARITY|SI|" + listOf("%.2f".format(java.util.Locale.US, si.remainingExcessInertPct), si.leadingCompartmentNumber, "%.2f".format(java.util.Locale.US, si.surfaceGfAfterPct), "%.2f".format(java.util.Locale.US, si.cnsAfterPct), "%.2f".format(java.util.Locale.US, si.nextDiveNdlMin), "%.2f".format(java.util.Locale.US, si.freshNdlMin), si.estimatedCleanTimeMin).joinToString("|"))
         scenarios().forEach { (id, r) -> println("DIAG " + fp(id, r)) }
+        val s10 = scenarios().first { it.first == "S10" }.second
+        println("DIAG PARITY|BMCCR|" + s10.input.gases.joinToString(",") { "${it.role.name}:${it.displayName}:${it.cylinder.count}" })
     }
 }

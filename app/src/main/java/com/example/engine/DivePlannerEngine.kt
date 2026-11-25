@@ -83,6 +83,7 @@ object DivePlannerEngine {
         var currentGas = primaryBottomGas
         var totalDecoMin = 0.0
         var firstStopRecorded = 0
+        val levelEnds = mutableListOf<LevelEndState>()
 
         fun activeSetpoint(depthM: Double, isDescent: Boolean, isDeco: Boolean): Double? {
             if (!isCcr) return null
@@ -195,9 +196,20 @@ object DivePlannerEngine {
             (bottomMin > 0.0 || (travelGas.o2 > firstLevelGas.o2 + 0.01 && firstLevel.depthM > 24.0))
 
         val startGas = if (shouldUseTravel && travelGas != null) travelGas else firstLevelGas
-        recordSnapshot(0.0, startGas, activeSetpoint(0.0, isDescent = true, isDeco = false))
+        val bailoutStart = input.bailoutStartRuntimeMin
 
-        if (shouldUseTravel && travelGas != null) {
+        if (bailoutStart != null) {
+            // CCR open-circuit bailout: already at depth, runtime continues from the bailout point
+            runtime = bailoutStart
+            currentDepth = firstLevel.depthM
+            recordSnapshot(firstLevel.depthM, firstLevelGas, null)
+        } else {
+            recordSnapshot(0.0, startGas, activeSetpoint(0.0, isDescent = true, isDeco = false))
+        }
+
+        if (bailoutStart != null) {
+            // no descent
+        } else if (shouldUseTravel && travelGas != null) {
             val travelMod = GasCalculator.modDisplayM(travelGas, dive.ppO2Bottom, env)
             val rawSwitch = min(firstLevel.depthM - stopInc, travelMod)
             val snappedSwitch = (kotlin.math.floor(rawSwitch / stopInc) * stopInc)
@@ -229,13 +241,14 @@ object DivePlannerEngine {
         }
 
         // ---- 2. Bottom / Multi-Level ----
-        val firstLevelDur = if (input.general.btIncludesDescent) {
+        val firstLevelDur = if (input.general.btIncludesDescent && bailoutStart == null) {
             (firstLevel.timeMin - runtime).coerceAtLeast(0.0)
         } else {
             firstLevel.timeMin
         }
         val spBottom1 = activeSetpoint(firstLevel.depthM, isDescent = false, isDeco = false)
         appendSegment(SegmentType.LEVEL, firstLevel.depthM, firstLevel.depthM, firstLevelDur, firstLevelGas, spBottom1)
+        levelEnds += LevelEndState(0, firstLevel.depthM, runtime, segments.size - 1, tissues)
 
         for (i in 1 until levels.size) {
             val lvl = levels[i]
@@ -251,6 +264,7 @@ object DivePlannerEngine {
                 )
             }
             appendSegment(SegmentType.LEVEL, lvl.depthM, lvl.depthM, lvl.timeMin, lvlGas, spLvl)
+            levelEnds += LevelEndState(i, lvl.depthM, runtime, segments.size - 1, tissues)
         }
 
         val endBottomRuntime = runtime
@@ -575,6 +589,10 @@ object DivePlannerEngine {
 
         val rawConsumption = OxygenAndConsumption.computeGasConsumption(segments, input, env, lostGasMaxUsage)
 
+        // CCR: open-circuit bailout from the end of every bottom level (worst point), at stress RMV
+        val bailoutAnalysis: CcrBailoutAnalysis? =
+            if (isCcr && input.bailoutStartRuntimeMin == null) ccrBailoutAnalysis(input, segments, levelEnds) else null
+
         // In Best GAS Mix mode, automatically scale tank count (1x, 2x, 3x... of 12L @ 200bar or user's chosen tank size)
         // for every gas according to the diver's Settings SAC/RMV & reserve rule so gas is always sufficient.
         var finalInput = input
@@ -588,9 +606,12 @@ object DivePlannerEngine {
             val updatedGasById = linkedMapOf<String, Gas>()
             val resizedGases = input.gases.map { g ->
                 val gc = requiredByGasId[g.id]
+                // CCR bailout gases are sized from the worst-case OC bailout (the loop never breathes them)
+                val bailoutNeed = bailoutAnalysis?.takeIf { g.id != it.diluentId }?.requiredById?.get(g.id) ?: 0.0
+                val needLitres = max(gc?.totalRequiredLitres ?: 0.0, bailoutNeed)
                 val singleTankLitres = (g.cylinder.waterVolumeL * g.cylinder.fillPressureBar).coerceAtLeast(1.0)
-                val neededCount = if (gc != null && gc.totalRequiredLitres > 0.0) {
-                    ceil((gc.totalRequiredLitres + 1e-3) / singleTankLitres).toInt().coerceIn(1, 20)
+                val neededCount = if (needLitres > 0.0) {
+                    ceil((needLitres + 1e-3) / singleTankLitres).toInt().coerceIn(1, 20)
                 } else {
                     1
                 }
@@ -628,11 +649,16 @@ object DivePlannerEngine {
             totalDecoMin = totalDecoMin,
             ndlMin = ndlMin,
             totalRuntimeMin = runtime,
-            maxDepthM = maxDepthM
+            maxDepthM = maxDepthMmaxDepthM = maxDepthM,
+            ccrBailout = bailoutAnalysis
         )
 
         val contingencies = if (includeContingencies) generateContingencies(finalInput) else emptyList()
-        val ccrBailout = if (includeContingencies && isCcr) generateCcrBailout(finalInput) else null
+        val ccrBailout = if (includeContingencies && isCcr && input.bailoutStartRuntimeMin == null) {
+            ccrBailoutSummary(ccrBailoutAnalysis(finalInput, finalSegments, levelEnds))
+        } else {
+            null
+        }
 
         return DivePlanResult(
             input = finalInput,
@@ -653,7 +679,8 @@ object DivePlannerEngine {
             gasConsumption = gasConsumption,
             alerts = alerts,
             contingencies = contingencies,
-            ccrBailout = ccrBailout
+            ccrBailout = ccrBailout,
+            levelEnds = levelEnds
         )
     }
 
@@ -790,20 +817,120 @@ object DivePlannerEngine {
     }
 
     /**
-     * CCR Open-Circuit Bailout plan from worst point with stress RMV (Section 8.6 & Section 11).
+     * CCR open-circuit bailout from the worst point (Section 8.6 & Section 11).
+     * Plans the dive on the loop, then bails out at the end of every bottom level and returns the worst case.
      */
     fun generateCcrBailout(input: DivePlanInput): ContingencySummary {
-        val ocBailoutInput = input.copy(
-            general = input.general.copy(planningType = PlanningType.OPEN_CIRCUIT),
-            consumption = input.consumption.copy(
-                bottomRmvLMin = input.consumption.bottomRmvLMin * input.consumption.stressFactor,
-                decoRmvLMin = input.consumption.decoRmvLMin * input.consumption.stressFactor
-            )
+        val main = planDive(input, includeContingencies = false, recordTimeline = false)
+        val analysis = if (main.abortedReason == null) ccrBailoutAnalysis(main.input, main.segments, main.levelEnds) else null
+        return ccrBailoutSummary(analysis) ?: toContingencySummary(
+            "CCR OC Bailout",
+            "Bailout plan could not be computed (no bottom level or no gas)",
+            main
         )
+    }
+
+    private fun ccrBailoutSummary(analysis: CcrBailoutAnalysis?): ContingencySummary? {
+        val worst = analysis?.worst ?: return null
+        val start = worst.input.bailoutStartRuntimeMin ?: 0.0
+        val depth = worst.input.levels.firstOrNull()?.depthM ?: worst.maxDepthM
+        val bottomGas = worst.segments.firstOrNull()?.gas?.displayName ?: "-"
         return toContingencySummary(
             "CCR OC Bailout",
-            "Open-circuit bailout at ${input.consumption.stressFactor}× stress RMV",
-            planDive(ocBailoutInput, includeContingencies = false, recordTimeline = false)
+            "Worst case: bail out at ${depth.roundToInt()} m, RT ${UnitsAndPressure.formatRuntimeMmSs(start)} (level ${analysis.worstLevelIndex + 1}) on $bottomGas, " +
+                "${Constants.CCR_BAILOUT_PROBLEM_SOLVING_MIN.roundToInt()} min problem solving, stress RMV",
+            worst
+        )
+    }
+
+    /** Richest bailout gas that is safe to breathe on open circuit at [depthM], or null if none is. */
+    fun pickBailoutBottomGas(depthM: Double, pool: List<Gas>, dive: DiveSettings, env: Environment): Gas? {
+        val pAmb = UnitsAndPressure.ambientPressure(depthM, env)
+        val breathable = pool.filter { g ->
+            GasCalculator.minDepthM(g, dive.ppO2Min, env) <= depthM + 1e-6 && pAmb * g.o2 <= dive.ppO2Deco + 1e-6
+        }
+        val withinBottom = breathable.filter { pAmb * it.o2 <= dive.ppO2Bottom + 0.005 }
+        val endOk = withinBottom.filter { GasCalculator.endM(it, depthM, env, dive.o2Narcotic) <= dive.maxEndM + 3.0 }
+        return endOk.maxByOrNull { it.o2 }
+            ?: withinBottom.maxByOrNull { it.he }
+            ?: breathable.minByOrNull { it.o2 }
+    }
+
+    /**
+     * Plans an open-circuit bailout from the end of every bottom level of a CCR dive: tissues, CNS and OTU are taken
+     * at that point, the diver solves the problem at depth for CCR_BAILOUT_PROBLEM_SOLVING_MIN, then ascends on the
+     * bailout gases. RMV is multiplied by the stress factor. Returns the worst case (longest TTS) and, for each gas,
+     * the most it needs (used + reserve) in any scenario.
+     */
+    fun ccrBailoutAnalysis(input: DivePlanInput, segments: List<Segment>, levelEnds: List<LevelEndState>): CcrBailoutAnalysis? {
+        if (levelEnds.isEmpty()) return null
+        val env = UnitsAndPressure.buildEnvironment(input.general)
+        val enabled = input.gases.filter { it.enabled }
+        val diluent = enabled.firstOrNull { it.role == GasRole.DILUENT || it.role == GasRole.BOTTOM } ?: return null
+        val pool = enabled.filter { it.id != diluent.id && it.role != GasRole.DILUENT }
+        val c = input.consumption
+        val bailoutConsumption = c.copy(
+            bottomRmvLMin = c.bottomRmvLMin * c.stressFactor,
+            decoRmvLMin = c.decoRmvLMin * c.stressFactor,
+            stressFactor = 1.0,
+            bottomReserveRule = if (c.bottomReserveRule == ReserveRuleBottom.ROCK_BOTTOM) ReserveRuleBottom.THIRDS else c.bottomReserveRule,
+            decoReserveRule = if (c.decoReserveRule == ReserveRuleDeco.LOST_GAS) ReserveRuleDeco.MULTIPLIER_1_5 else c.decoReserveRule
+        )
+
+        var worst: DivePlanResult? = null
+        var worstIdx = -1
+        val required = linkedMapOf<String, Double>()
+        var fallbackDepth: Double? = null
+        var abortedDepth: Double? = null
+
+        for (le in levelEnds) {
+            val picked = pickBailoutBottomGas(le.depthM, pool, input.dive, env)
+            if (picked == null) fallbackDepth = max(fallbackDepth ?: 0.0, le.depthM)
+            val bottom = (picked ?: diluent).copy(role = GasRole.BOTTOM)
+            val others = pool.filter { it.id != bottom.id }
+                .map { if (it.role == GasRole.BOTTOM) it.copy(role = GasRole.TRAVEL) else it }
+            val prefixOxygen = OxygenAndConsumption.computeOxygenSummary(
+                segments = segments.take(le.segmentIndex + 1),
+                previousCnsPct = input.previousCnsPct,
+                previousDailyOtu = input.previousDailyOtu,
+                surfaceIntervalMin = input.surfaceIntervalMin
+            )
+            val bailoutInput = input.copy(
+                general = input.general.copy(
+                    planningType = PlanningType.OPEN_CIRCUIT,
+                    gasSelectionMode = GasSelectionMode.USER_INPUT_GAS
+                ),
+                consumption = bailoutConsumption,
+                gases = listOf(bottom) + others,
+                levels = listOf(DiveLevel("ccr_bailout", le.depthM, Constants.CCR_BAILOUT_PROBLEM_SOLVING_MIN, bottom.id)),
+                previousTissues = le.tissues,
+                previousCnsPct = prefixOxygen.endCnsPct,
+                previousDailyOtu = prefixOxygen.dailyOtu,
+                surfaceIntervalMin = 0.0,
+                previousMaxDepthM = null,
+                bailoutStartRuntimeMin = le.runtimeMin
+            )
+            val res = planDive(bailoutInput, includeContingencies = false, recordTimeline = false)
+            if (res.abortedReason != null) {
+                abortedDepth = max(abortedDepth ?: 0.0, le.depthM)
+                continue
+            }
+            for (gc in res.gasConsumption) {
+                required[gc.gas.id] = max(required[gc.gas.id] ?: 0.0, gc.totalRequiredLitres)
+            }
+            val w = worst
+            if (w == null || res.ttsMin > w.ttsMin + 1e-6) {
+                worst = res
+                worstIdx = le.levelIndex
+            }
+        }
+        return CcrBailoutAnalysis(
+            worst = worst,
+            worstLevelIndex = worstIdx,
+            requiredById = required,
+            diluentId = diluent.id,
+            diluentFallbackDepthM = fallbackDepth,
+            abortedDepthM = abortedDepth
         )
     }
 
