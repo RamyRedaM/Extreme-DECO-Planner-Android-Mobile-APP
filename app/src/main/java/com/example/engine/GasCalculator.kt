@@ -671,7 +671,7 @@ object GasCalculator {
         }
 
         val dilPpO2 = pMax * diluent.o2
-        notes += "CCR Best GAS Mix: diluent ${diluent.displayName} (ppO₂ ${"%.2f".format(dilPpO2)} bar at ${depth.roundToInt()} m) · " +
+        notes += "CCR Best GAS Mix: diluent ${diluent.displayName} (ppO₂ ${"%.2f".format(java.util.Locale.US, dilPpO2)} bar at ${depth.roundToInt()} m) · " +
             "bailout ${bottomBailout.displayName}" + stages.joinToString("") { " · ${it.displayName} @ ${it.modOverrideM?.roundToInt() ?: 0} m" } + "."
         notes += "Bailout cylinders are sized from the worst-case open-circuit bailout (end of the bottom phase, stress RMV)."
 

@@ -649,7 +649,7 @@ object DivePlannerEngine {
             totalDecoMin = totalDecoMin,
             ndlMin = ndlMin,
             totalRuntimeMin = runtime,
-            maxDepthM = maxDepthMmaxDepthM = maxDepthM,
+            maxDepthM = maxDepthM,
             ccrBailout = bailoutAnalysis
         )
 
