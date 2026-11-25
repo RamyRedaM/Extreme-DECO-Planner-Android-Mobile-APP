@@ -72,6 +72,21 @@ final class ParityTests: XCTestCase {
         ], includeContingenciesForIndex: -1)
         out.append(("S9a", day.diveResults[0]))
         out.append(("S9b", day.diveResults[1]))
+
+        // S10: CCR Best GAS Mix 60 m / 25 min, plus its worst-case OC bailout
+        var ccrBest = GeneralSettings(); ccrBest.planningType = .ccr
+        let rec = GasCalculator.recommendBestMix(maxDepthM: 60, general: ccrBest, dive: DiveSettings(), levels: [DiveLevel("a", 60, 25)])
+        let s10 = DivePlannerEngine.planDive(input(ccrBest, rec.plannerGases, [DiveLevel("a", 60, 25)]))
+        out.append(("S10", s10))
+        out.append(("S10bo", DivePlannerEngine.ccrBailoutAnalysis(s10.input, s10.segments, s10.levelEnds)!.worst!))
+
+        // S11: CCR user gases, multi-level 75 m / 15 then 50 m / 10
+        var g11 = user; g11.planningType = .ccr
+        let s11 = DivePlannerEngine.planDive(input(g11, [g("dil", 15, 55, .diluent, l: 3.0), g("bo_tx", 18, 45, .bailout, l: 11.0, n: 2),
+                                                         g("bo_50", 50, 0, .bailout, l: 11.0), g("bo_o2", 100, 0, .bailout, l: 7.0)],
+                                                   [DiveLevel("a", 75, 15), DiveLevel("b", 50, 10)]))
+        out.append(("S11", s11))
+        out.append(("S11bo", DivePlannerEngine.ccrBailoutAnalysis(s11.input, s11.segments, s11.levelEnds)!.worst!))
         return out
     }
 
@@ -119,6 +134,10 @@ final class ParityTests: XCTestCase {
         let bmLine = bm.plannerGases.map { "\($0.role.rawValue):\($0.displayName):\($0.modOverrideM.map { String($0) } ?? "-")" }.joined(separator: ",")
         print("DIAG SWIFT PARITY|BM70|" + bmLine)
         XCTAssertEqual(bmLine, Self.kotlinReference["BM70"])
+        let s10 = Self.scenarios().first { $0.0 == "S10" }!.1
+        let ccrLine = s10.input.gases.map { "\($0.role.rawValue.uppercased()):\($0.displayName):\($0.cylinder.count)" }.joined(separator: ",")
+        print("DIAG SWIFT PARITY|BMCCR|" + ccrLine)
+        XCTAssertEqual(ccrLine, Self.kotlinReference["BMCCR"])
         let s2 = Self.scenarios().first { $0.0 == "S2" }!.1
         let si = TissuesAndBuhlmann.estimateSurfaceInterval(endTissues: s2.endTissues, endCnsPct: s2.oxygen.endCnsPct, surfaceIntervalMin: 60,
                                                             env: s2.env, nextDiveDepthM: 25, nextDiveGas: Gas.fromPercent("x", 32, 0, .bottom),

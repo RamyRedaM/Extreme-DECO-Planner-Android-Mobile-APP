@@ -180,6 +180,8 @@ final class PlannerStore: ObservableObject {
         bestMixRec = rec
         show(rec.isRecreational
              ? "REC Dive (Within NDL): Best GAS Mix \(rec.bottomGas.displayName) (Air / Nitrox only)"
+             : rec.bailoutBottomGas != nil
+             ? "CCR Best GAS Mix: diluent \(rec.bottomGas.displayName) · bailout " + ([rec.bailoutBottomGas!] + rec.decoGases).map(\.displayName).joined(separator: " · ")
              : "Best GAS Mix active: 6m \(rec.deco6mO2?.displayName ?? "O2") · 21m \(rec.deco21mEan50?.displayName ?? "EAN50") · Travel \(rec.travelGasDisplay.displayName) · MOD \(rec.bottomGas.displayName)")
         recomputePlan(immediate: true)
     }
@@ -266,6 +268,7 @@ final class PlannerStore: ObservableObject {
                     rec.deco21mEan50 = rec.deco21mEan50.map(sync)
                     rec.deepDecoGas = rec.deepDecoGas.map(sync)
                     rec.decoGases = rec.decoGases.map(sync)
+                    rec.bailoutBottomGas = rec.bailoutBottomGas.map(sync)
                     rec.plannerGases = finalGases
                 } else if isBest {
                     finalGases = rec.plannerGases

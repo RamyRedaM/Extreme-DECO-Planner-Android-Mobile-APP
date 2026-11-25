@@ -304,6 +304,9 @@ public struct DivePlanInput: Codable, Hashable {
     public var previousDailyOtu: Double = 0.0
     public var surfaceIntervalMin: Double = 0.0
     public var previousMaxDepthM: Double? = nil
+    /// Set only for a CCR open-circuit bailout plan: the plan starts at the first level depth (no descent)
+    /// and its runtime continues from this value.
+    public var bailoutStartRuntimeMin: Double? = nil
     public init() {}
 
     public static func defaultGases() -> [Gas] {
@@ -505,6 +508,8 @@ public struct MixRecommendation: Hashable {
     public var ppO2AtMaxDepth: Double
     public var notes: [String]
     public var isRecreational: Bool = false
+    /// CCR only: open-circuit bailout gas breathable at the maximum depth.
+    public var bailoutBottomGas: Gas? = nil
 }
 
 public struct ContingencySummary: Codable, Hashable {
@@ -541,6 +546,8 @@ public struct DivePlanResult: Hashable {
     public var contingencies: [ContingencySummary] = []
     public var ccrBailout: ContingencySummary? = nil
     public var abortedReason: String? = nil
+    /// State at the end of each bottom level (used to plan CCR bailout from the worst point).
+    public var levelEnds: [LevelEndState] = []
 
     public var hasErrors: Bool { abortedReason != nil || alerts.contains { $0.level == .critical } }
     public var hasWarnings: Bool { alerts.contains { $0.level != .critical } }
@@ -586,4 +593,27 @@ public struct MultiDiveDayResult: Hashable {
         self.diveResults = diveResults; self.surfaceIntervalsMin = surfaceIntervalsMin
         self.postSurfaceIntervalTissues = postSurfaceIntervalTissues; self.totalDailyOtu = totalDailyOtu; self.peakEndCnsPct = peakEndCnsPct
     }
+}
+
+
+/// Diver state at the end of one bottom level.
+public struct LevelEndState: Hashable {
+    public let levelIndex: Int
+    public let depthM: Double
+    public let runtimeMin: Double
+    public let segmentIndex: Int
+    public let tissues: TissueState
+}
+
+/// Worst-case CCR open-circuit bailout over every bottom level end.
+public struct CcrBailoutAnalysis {
+    public let worst: DivePlanResult?
+    public let worstLevelIndex: Int
+    /// Highest litres (with reserve) each gas needs across all bailout scenarios.
+    public let requiredById: [String: Double]
+    public let diluentId: String
+    /// Deepest bailout point where no bailout gas was breathable and the diluent had to be used on OC.
+    public let diluentFallbackDepthM: Double?
+    /// Deepest bailout point whose bailout plan could not be completed.
+    public let abortedDepthM: Double?
 }

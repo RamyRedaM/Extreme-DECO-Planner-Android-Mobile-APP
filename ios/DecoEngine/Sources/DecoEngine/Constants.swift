@@ -32,4 +32,9 @@ public enum Constants {
     public static let STANDARD_BOTTOM_MIXES: [(Int, Int)] = [
         (21, 0), (32, 0), (21, 35), (18, 45), (15, 55), (12, 65), (10, 70), (8, 80)
     ]
+
+    /// CCR Best GAS Mix: diluent ppO2 at the maximum depth (keeps a diluent flush below the bottom setpoint).
+    public static let CCR_DILUENT_PPO2 = 1.10
+    /// CCR bailout: minutes of problem solving at depth before the open-circuit ascent starts.
+    public static let CCR_BAILOUT_PROBLEM_SOLVING_MIN = 2.0
 }

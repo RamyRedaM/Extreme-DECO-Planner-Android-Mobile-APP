@@ -99,6 +99,8 @@ class CcrBailoutTest {
         assertTrue(bo.oxygen.startCnsPct > 0.0)
         // no repetitive-dive alerts in a bailout plan
         assertTrue(bo.alerts.none { it.code == AlertCode.SHORT_SURFACE_INTERVAL || it.code == AlertCode.REVERSE_PROFILE })
+        // bailout stages are deco gases on the ascent: no false bottom-ppO2 or missing-deco-gas alerts
+        assertTrue(bo.alerts.none { it.code == AlertCode.PPO2_HIGH_BOTTOM || it.code == AlertCode.NO_DECO_REDUNDANCY })
     }
 
     @Test

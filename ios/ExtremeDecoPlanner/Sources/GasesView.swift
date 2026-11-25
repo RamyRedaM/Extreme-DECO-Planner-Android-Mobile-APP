@@ -36,7 +36,42 @@ struct GasesView: View {
         }
     }
 
+    @ViewBuilder
     private func recommendationCard(_ rec: MixRecommendation) -> some View {
+        if let bb = rec.bailoutBottomGas {
+            ccrRecommendationCard(rec, bb)
+        } else {
+            ocRecommendationCard(rec)
+        }
+    }
+
+    private func cylTag(_ g: Gas) -> String {
+        "\(g.cylinder.count)×\(kRound(g.cylinder.waterVolumeL))L @ \(kRound(g.cylinder.fillPressureBar))b"
+    }
+
+    private func ccrRecommendationCard(_ rec: MixRecommendation, _ bb: Gas) -> some View {
+        Card(title: "CCR Best GAS Mix", systemImage: "arrow.triangle.2.circlepath") {
+            HStack(spacing: 8) {
+                StatTile(label: "Diluent · \(cylTag(rec.bottomGas))", value: rec.bottomGas.displayName, color: Theme.gasColor(rec.bottomGas))
+                StatTile(label: "Bottom bailout · \(cylTag(bb))", value: bb.displayName, color: Theme.gasColor(bb))
+            }
+            if !rec.decoGases.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(rec.decoGases) { g in
+                        StatTile(label: "@ \(kRound(g.modOverrideM ?? 0)) m · \(cylTag(g))", value: g.displayName, color: Theme.gasColor(g))
+                    }
+                }
+            }
+            Text("Diluent ppO₂ \(rec.ppO2AtMaxDepth.f(2)) bar at max · END \(UnitsAndPressure.formatDepth(rec.endAtMaxDepthM, store.units)) · ρ \(rec.densityAtMaxDepthGL.f(1)) g/L")
+                .font(.caption).foregroundStyle(.secondary)
+            ForEach(rec.notes, id: \.self) { Text("• \($0)").font(.caption2).foregroundStyle(.secondary) }
+            if store.input.general.gasSelectionMode != .bestGasMix {
+                Button("Apply recommendation") { store.applyBestMixRecommendation() }.buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private func ocRecommendationCard(_ rec: MixRecommendation) -> some View {
         Card(title: rec.isRecreational ? "REC Dive (Within NDL)" : "Best GAS Mix Recommendation", systemImage: "star.circle") {
             HStack(spacing: 8) {
                 StatTile(label: "Bottom", value: rec.bottomGas.displayName, color: Theme.gasColor(rec.bottomGas))

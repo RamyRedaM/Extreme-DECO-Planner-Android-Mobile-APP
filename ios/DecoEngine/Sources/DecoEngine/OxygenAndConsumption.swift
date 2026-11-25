@@ -173,7 +173,8 @@ public enum OxygenAndConsumption {
                                        _ oxygen: OxygenSummary, _ consumption: [GasConsumptionResult],
                                        endSurfaceGfPct: Double = 0.0, ttsMin: Double = 0.0, totalDecoMin: Double = 0.0,
                                        ndlMin: Double = Double.infinity, totalRuntimeMin: Double = 0.0,
-                                       maxDepthM maxDepthIn: Double? = nil) -> [PlanAlert] {
+                                       maxDepthM maxDepthIn: Double? = nil,
+                                       ccrBailout: CcrBailoutAnalysis? = nil) -> [PlanAlert] {
         let maxDepthM = maxDepthIn ?? (segments.map { max($0.fromDepthM, $0.toDepthM) }.max() ?? 0.0)
         var list = [PlanAlert]()
         let dive = input.dive
@@ -236,15 +237,20 @@ public enum OxygenAndConsumption {
             let ocBailoutGases = enabledGases.filter { $0.role == .bailout || $0.role == .deco || $0.role == .travel }
             if ocBailoutGases.isEmpty {
                 list.append(PlanAlert(.critical, .CCR_BAILOUT_RISK, "CCR plan has no open-circuit bailout or deco gases configured — configure dedicated OC bailout cylinders."))
-            } else if maxDepthM > 0.0 {
-                let pMax = UnitsAndPressure.ambientPressure(maxDepthM, env)
-                let pAvgAsc = (pMax + env.pSurfaceBar) / 2.0
-                let ascTimeMin = maxDepthM / dive.ascentRateToFirstStopMMin.coerceAtLeast(3.0)
-                let stressRmv = input.consumption.bottomRmvLMin * input.consumption.stressFactor
-                let minBailoutLitres = stressRmv * ((pMax / env.pSurfaceBar) * 2.0 + (pAvgAsc / env.pSurfaceBar) * ascTimeMin)
-                let availableBailoutLitres = ocBailoutGases.reduce(0.0) { $0 + $1.cylinder.availableLitres }
-                if availableBailoutLitres < minBailoutLitres {
-                    list.append(PlanAlert(.critical, .CCR_BAILOUT_RISK, "Insufficient CCR OC bailout gas: stress-RMV ascent requires ~\(kRound(minBailoutLitres)) L, onboard bailout/deco cylinders hold \(kRound(availableBailoutLitres)) L."))
+            } else if let bo = ccrBailout {
+                // Worst-case OC bailout from the end of each bottom level (planned by DivePlannerEngine)
+                if let d = bo.abortedDepthM {
+                    list.append(PlanAlert(.critical, .CCR_BAILOUT_RISK, "Open-circuit bailout from \(kRound(d)) m cannot be completed with the configured gases and limits."))
+                }
+                if let d = bo.diluentFallbackDepthM {
+                    list.append(PlanAlert(.high, .CCR_BAILOUT_RISK, "No bailout gas is breathable at \(kRound(d)) m on open circuit: the bailout plan has to use the diluent. Carry a bottom bailout cylinder."))
+                }
+                for g in enabledGases {
+                    guard let need = bo.requiredById[g.id] else { continue }
+                    let have = g.cylinder.availableLitres
+                    if need > have + 0.5 {
+                        list.append(PlanAlert(.critical, .CCR_BAILOUT_RISK, "Insufficient bailout gas \(g.displayName): worst-case open-circuit bailout (end of bottom phase, stress RMV) needs \(kRound(need)) L, cylinders hold \(kRound(have)) L."))
+                    }
                 }
             }
         }
@@ -270,7 +276,7 @@ public enum OxygenAndConsumption {
         for (idx, seg) in segments.enumerated() {
             let maxPpO2Seg = max(seg.ppO2Start, seg.ppO2End)
             let minPpO2Seg = min(seg.ppO2Start, seg.ppO2End)
-            let isDecoPhase = seg.type == .stop || seg.type == .switchGas || (seg.type == .ascent && seg.gas.role == .deco)
+            let isDecoPhase = seg.type == .stop || seg.type == .switchGas || (seg.type == .ascent && (seg.gas.role == .deco || seg.gas.role == .bailout))
             let maxSegDepth = max(seg.fromDepthM, seg.toDepthM)
 
             if seg.type == .airBreak || maxPpO2Seg < 1.30 {
@@ -400,7 +406,7 @@ public enum OxygenAndConsumption {
 
         // Deco gas strategy
         if !isCcr && hasDecoStops {
-            let enabledDecoGases = enabledGases.filter { $0.role == .deco }
+            let enabledDecoGases = enabledGases.filter { $0.role == .deco || $0.role == .bailout }
             if enabledDecoGases.isEmpty && (maxDepthM > 40.0 || totalDecoMin >= 25.0) {
                 list.append(PlanAlert(.high, .NO_DECO_REDUNDANCY, "Decompression dive (\(kRound(maxDepthM)) m, \(kRound(totalDecoMin)) min deco) has no accelerated deco gas (e.g., EAN50 / O₂) — long backgas deco and zero gas redundancy."))
             } else if maxDepthM >= 50.0 && totalDecoMin >= 25.0 && !enabledDecoGases.isEmpty {
@@ -413,7 +419,7 @@ public enum OxygenAndConsumption {
         }
 
         // Repetitive dives
-        if input.previousTissues != nil {
+        if input.previousTissues != nil && input.bailoutStartRuntimeMin == nil {
             if let prevDepth = input.previousMaxDepthM, maxDepthM > prevDepth + 6.0 {
                 let deltaM = kRound(maxDepthM - prevDepth)
                 if hasDecoStops || maxDepthM > prevDepth + 12.0 {
@@ -471,7 +477,7 @@ public enum OxygenAndConsumption {
             let plannedBottomTime = activeLevels[0].timeMin
             let remainingNdl = ndlMin - plannedBottomTime
             if plannedBottomTime >= ndlMin * 0.85 || remainingNdl <= 3.0 {
-                if !enabledGases.contains(where: { $0.role == .deco }) {
+                if !enabledGases.contains(where: { $0.role == .deco || $0.role == .bailout }) {
                     list.append(PlanAlert(.medium, .TIGHT_NDL_MARGIN, "Tight NDL margin: planned bottom time (\(kRound(plannedBottomTime)) min) is within \(kRound(remainingNdl.coerceAtLeast(0.0))) min of the \(kRound(ndlMin)) min NDL without deco gas."))
                 }
             }
@@ -494,9 +500,10 @@ public enum OxygenAndConsumption {
                     list.append(PlanAlert(.low, .GAS_ALERT_LIMITS, "Tight gas margin on \(gc.gas.displayName): ends \(kRound(gc.remainingBar)) bar vs \(kRound(gc.minPressureBar)) bar min reserve."))
                 }
                 let budgetLimit: Double
-                if gc.gas.role == .deco && gc.gas.o2Pct >= 99 { budgetLimit = alerts.decoO2MaxLitres }
-                else if gc.gas.role == .deco && gc.gas.o2Pct >= 50 { budgetLimit = alerts.decoMix50To99MaxLitres }
-                else if gc.gas.role == .deco { budgetLimit = alerts.decoMixUpTo49MaxLitres }
+                let isDecoRole = gc.gas.role == .deco || gc.gas.role == .bailout
+                if isDecoRole && gc.gas.o2Pct >= 99 { budgetLimit = alerts.decoO2MaxLitres }
+                else if isDecoRole && gc.gas.o2Pct >= 50 { budgetLimit = alerts.decoMix50To99MaxLitres }
+                else if isDecoRole { budgetLimit = alerts.decoMixUpTo49MaxLitres }
                 else { budgetLimit = alerts.bottomMixMaxLitres }
                 if gc.usedLitres > budgetLimit {
                     list.append(PlanAlert(.low, .GAS_ALERT_LIMITS, "\(gc.gas.displayName) uses \(kRound(gc.usedLitres)) L, above your \(kRound(budgetLimit)) L gas budget alert (Settings › Safety Alert Thresholds). Cylinders hold \(kRound(gc.availableLitres)) L, so the plan has enough gas."))

@@ -49,6 +49,7 @@ public enum DivePlannerEngine {
         var currentGas = primaryBottomGas
         var totalDecoMin = 0.0
         var firstStopRecorded = 0
+        var levelEnds = [LevelEndState]()
 
         func ceilingM(_ t: TissueState, _ gf: Double) -> Double {
             TissuesAndBuhlmann.ceilingDepthM(t, gf, coeffs, env, model: model, vpmConservatism: vpmC)
@@ -122,9 +123,19 @@ public enum DivePlannerEngine {
             shouldUseTravel = bottomMin > 0.0 || (tg.o2 > firstLevelGas.o2 + 0.01 && firstLevel.depthM > 24.0)
         }
         let startGas = (shouldUseTravel && travelGas != nil) ? travelGas! : firstLevelGas
-        recordSnapshot(0.0, startGas, activeSetpoint(0.0, isDescent: true, isDeco: false))
+        let bailoutStart = input.bailoutStartRuntimeMin
+        if let start = bailoutStart {
+            // CCR open-circuit bailout: already at depth, runtime continues from the bailout point
+            runtime = start
+            currentDepth = firstLevel.depthM
+            recordSnapshot(firstLevel.depthM, firstLevelGas, nil)
+        } else {
+            recordSnapshot(0.0, startGas, activeSetpoint(0.0, isDescent: true, isDeco: false))
+        }
 
-        if shouldUseTravel, let tg = travelGas {
+        if bailoutStart != nil {
+            // no descent
+        } else if shouldUseTravel, let tg = travelGas {
             let travelMod = GasCalculator.modDisplayM(tg, dive.ppO2Bottom, env)
             let rawSwitch = min(firstLevel.depthM - stopIncD, travelMod)
             let snappedSwitch = ((rawSwitch / stopIncD).rounded(.down) * stopIncD)
@@ -149,9 +160,10 @@ public enum DivePlannerEngine {
         }
 
         // ---- 2. Bottom / multi-level ----
-        let firstLevelDur = input.general.btIncludesDescent ? (firstLevel.timeMin - runtime).coerceAtLeast(0.0) : firstLevel.timeMin
+        let firstLevelDur = (input.general.btIncludesDescent && bailoutStart == nil) ? (firstLevel.timeMin - runtime).coerceAtLeast(0.0) : firstLevel.timeMin
         let spBottom1 = activeSetpoint(firstLevel.depthM, isDescent: false, isDeco: false)
         appendSegment(.level, firstLevel.depthM, firstLevel.depthM, firstLevelDur, firstLevelGas, spBottom1)
+        levelEnds.append(LevelEndState(levelIndex: 0, depthM: firstLevel.depthM, runtimeMin: runtime, segmentIndex: segments.count - 1, tissues: tissues))
 
         if levels.count > 1 {
             for i in 1..<levels.count {
@@ -165,6 +177,7 @@ public enum DivePlannerEngine {
                                   abs(lvl.depthM - currentDepth) / (deeper ? descentRate : ascentRate), lvlGas, spLvl)
                 }
                 appendSegment(.level, lvl.depthM, lvl.depthM, lvl.timeMin, lvlGas, spLvl)
+                levelEnds.append(LevelEndState(levelIndex: i, depthM: lvl.depthM, runtimeMin: runtime, segmentIndex: segments.count - 1, tissues: tissues))
             }
         }
 
@@ -365,6 +378,10 @@ public enum DivePlannerEngine {
         let lostGasMaxUsage: [String: Double] = (!isCcr && input.consumption.decoReserveRule == .lostGas) ? lostGasWorstCaseUsage(input) : [:]
         let rawConsumption = OxygenAndConsumption.computeGasConsumption(segments, input, env, lostGasMaxUsageById: lostGasMaxUsage)
 
+        // CCR: open-circuit bailout from the end of every bottom level (worst point), at stress RMV
+        let bailoutAnalysis: CcrBailoutAnalysis? = (isCcr && input.bailoutStartRuntimeMin == nil)
+            ? ccrBailoutAnalysis(input, segments, levelEnds) : nil
+
         var finalInput = input
         var finalSegments = segments
         var finalStops = stops
@@ -378,8 +395,11 @@ public enum DivePlannerEngine {
             let resizedGases: [Gas] = input.gases.map { g in
                 let singleTankLitres = (g.cylinder.waterVolumeL * g.cylinder.fillPressureBar).coerceAtLeast(1.0)
                 var neededCount = 1
-                if let gc = requiredByGasId[g.id], gc.totalRequiredLitres > 0.0 {
-                    neededCount = Int(((gc.totalRequiredLitres + 1e-3) / singleTankLitres).rounded(.up)).coerceIn(1, 20)
+                // CCR bailout gases are sized from the worst-case OC bailout (the loop never breathes them)
+                let bailoutNeed = (bailoutAnalysis != nil && g.id != bailoutAnalysis!.diluentId) ? (bailoutAnalysis!.requiredById[g.id] ?? 0.0) : 0.0
+                let needLitres = max(requiredByGasId[g.id]?.totalRequiredLitres ?? 0.0, bailoutNeed)
+                if needLitres > 0.0 {
+                    neededCount = Int(((needLitres + 1e-3) / singleTankLitres).rounded(.up)).coerceIn(1, 20)
                 }
                 var resized = g
                 resized.cylinder.count = neededCount
@@ -408,15 +428,17 @@ public enum DivePlannerEngine {
         let ttsMin = (runtime - endBottomRuntime).coerceAtLeast(0.0)
         let alerts = OxygenAndConsumption.runSafetyChecks(finalInput, env, finalSegments, oxygen, gasConsumption,
                                                           endSurfaceGfPct: endSurfGf, ttsMin: ttsMin, totalDecoMin: totalDecoMin,
-                                                          ndlMin: ndlMin, totalRuntimeMin: runtime, maxDepthM: maxDepthM)
+                                                          ndlMin: ndlMin, totalRuntimeMin: runtime, maxDepthM: maxDepthM,
+                                                          ccrBailout: bailoutAnalysis)
         let contingencies = includeContingencies ? generateContingencies(finalInput) : []
-        let ccrBailout = (includeContingencies && isCcr) ? generateCcrBailout(finalInput) : nil
+        let ccrBailout = (includeContingencies && isCcr && input.bailoutStartRuntimeMin == nil)
+            ? ccrBailoutSummary(ccrBailoutAnalysis(finalInput, finalSegments, levelEnds)) : nil
 
         return DivePlanResult(input: finalInput, env: env, segments: finalSegments, stops: finalStops, maxDepthM: maxDepthM,
                               totalRuntimeMin: runtime, totalDecoMin: totalDecoMin, ttsMin: ttsMin, firstStopM: firstStopRecorded,
                               ndlMin: ndlMin, startTissues: startTissues, endTissues: tissues, endSurfaceGfPct: endSurfGf,
                               tissueTimeline: finalTimeline, oxygen: oxygen, gasConsumption: gasConsumption, alerts: alerts,
-                              contingencies: contingencies, ccrBailout: ccrBailout)
+                              contingencies: contingencies, ccrBailout: ccrBailout, levelEnds: levelEnds)
     }
 
     /// For each enabled deco gas, plans the dive with that gas lost; returns per remaining gas the highest usage seen.
@@ -495,14 +517,98 @@ public enum DivePlannerEngine {
         return list
     }
 
-    /// CCR open-circuit bailout at stress RMV.
+    /// CCR open-circuit bailout from the worst point: plans the dive on the loop, then bails out at the end of every
+    /// bottom level and returns the worst case (mirrors DivePlannerEngine.kt).
     public static func generateCcrBailout(_ input: DivePlanInput) -> ContingencySummary {
-        var oc = input
-        oc.general.planningType = .openCircuit
-        oc.consumption.bottomRmvLMin = input.consumption.bottomRmvLMin * input.consumption.stressFactor
-        oc.consumption.decoRmvLMin = input.consumption.decoRmvLMin * input.consumption.stressFactor
-        return toContingencySummary("CCR OC Bailout", "Open-circuit bailout at \(input.consumption.stressFactor)× stress RMV",
-                                    planDive(oc, includeContingencies: false, recordTimeline: false))
+        let main = planDive(input, includeContingencies: false, recordTimeline: false)
+        let analysis = main.abortedReason == nil ? ccrBailoutAnalysis(main.input, main.segments, main.levelEnds) : nil
+        return ccrBailoutSummary(analysis)
+            ?? toContingencySummary("CCR OC Bailout", "Bailout plan could not be computed (no bottom level or no gas)", main)
+    }
+
+    static func ccrBailoutSummary(_ analysis: CcrBailoutAnalysis?) -> ContingencySummary? {
+        guard let a = analysis, let worst = a.worst else { return nil }
+        let start = worst.input.bailoutStartRuntimeMin ?? 0.0
+        let depth = worst.input.levels.first?.depthM ?? worst.maxDepthM
+        let bottomGas = worst.segments.first?.gas.displayName ?? "-"
+        return toContingencySummary(
+            "CCR OC Bailout",
+            "Worst case: bail out at \(kRound(depth)) m, RT \(UnitsAndPressure.formatRuntimeMmSs(start)) (level \(a.worstLevelIndex + 1)) on \(bottomGas), " +
+                "\(kRound(Constants.CCR_BAILOUT_PROBLEM_SOLVING_MIN)) min problem solving, stress RMV",
+            worst)
+    }
+
+    /// Richest bailout gas that is safe to breathe on open circuit at depthM, or nil if none is.
+    public static func pickBailoutBottomGas(_ depthM: Double, _ pool: [Gas], _ dive: DiveSettings, _ env: Environment) -> Gas? {
+        let pAmb = UnitsAndPressure.ambientPressure(depthM, env)
+        let breathable = pool.filter { g in
+            GasCalculator.minDepthM(g, dive.ppO2Min, env) <= depthM + 1e-6 && pAmb * g.o2 <= dive.ppO2Deco + 1e-6
+        }
+        let withinBottom = breathable.filter { pAmb * $0.o2 <= dive.ppO2Bottom + 0.005 }
+        let endOk = withinBottom.filter { GasCalculator.endM($0, depthM, env, dive.o2Narcotic) <= dive.maxEndM + 3.0 }
+        return endOk.max(by: { $0.o2 < $1.o2 })
+            ?? withinBottom.max(by: { $0.he < $1.he })
+            ?? breathable.min(by: { $0.o2 < $1.o2 })
+    }
+
+    /// Open-circuit bailout from the end of every bottom level of a CCR dive (mirrors DivePlannerEngine.kt).
+    public static func ccrBailoutAnalysis(_ input: DivePlanInput, _ segments: [Segment], _ levelEnds: [LevelEndState]) -> CcrBailoutAnalysis? {
+        if levelEnds.isEmpty { return nil }
+        let env = UnitsAndPressure.buildEnvironment(input.general)
+        let enabled = input.gases.filter { $0.enabled }
+        guard let diluent = enabled.first(where: { $0.role == .diluent || $0.role == .bottom }) else { return nil }
+        let pool = enabled.filter { $0.id != diluent.id && $0.role != .diluent }
+        var bc = input.consumption
+        bc.bottomRmvLMin = input.consumption.bottomRmvLMin * input.consumption.stressFactor
+        bc.decoRmvLMin = input.consumption.decoRmvLMin * input.consumption.stressFactor
+        bc.stressFactor = 1.0
+        if bc.bottomReserveRule == .rockBottom { bc.bottomReserveRule = .thirds }
+        if bc.decoReserveRule == .lostGas { bc.decoReserveRule = .multiplier15 }
+
+        var worst: DivePlanResult? = nil
+        var worstIdx = -1
+        var required = [String: Double]()
+        var fallbackDepth: Double? = nil
+        var abortedDepth: Double? = nil
+
+        for le in levelEnds {
+            let picked = pickBailoutBottomGas(le.depthM, pool, input.dive, env)
+            if picked == nil { fallbackDepth = max(fallbackDepth ?? 0.0, le.depthM) }
+            var bottom = picked ?? diluent
+            bottom.role = .bottom
+            let others = pool.filter { $0.id != bottom.id }.map { g -> Gas in
+                var c = g
+                if c.role == .bottom { c.role = .travel }
+                return c
+            }
+            let prefixOxygen = OxygenAndConsumption.computeOxygenSummary(
+                Array(segments.prefix(le.segmentIndex + 1)), previousCnsPct: input.previousCnsPct,
+                previousDailyOtu: input.previousDailyOtu, surfaceIntervalMin: input.surfaceIntervalMin)
+            var bi = input
+            bi.general.planningType = .openCircuit
+            bi.general.gasSelectionMode = .userInputGas
+            bi.consumption = bc
+            bi.gases = [bottom] + others
+            bi.levels = [DiveLevel("ccr_bailout", le.depthM, Constants.CCR_BAILOUT_PROBLEM_SOLVING_MIN, gasId: bottom.id)]
+            bi.previousTissues = le.tissues
+            bi.previousCnsPct = prefixOxygen.endCnsPct
+            bi.previousDailyOtu = prefixOxygen.dailyOtu
+            bi.surfaceIntervalMin = 0.0
+            bi.previousMaxDepthM = nil
+            bi.bailoutStartRuntimeMin = le.runtimeMin
+            let res = planDive(bi, includeContingencies: false, recordTimeline: false)
+            if res.abortedReason != nil {
+                abortedDepth = max(abortedDepth ?? 0.0, le.depthM)
+                continue
+            }
+            for gc in res.gasConsumption { required[gc.gas.id] = max(required[gc.gas.id] ?? 0.0, gc.totalRequiredLitres) }
+            if worst == nil || res.ttsMin > worst!.ttsMin + 1e-6 {
+                worst = res
+                worstIdx = le.levelIndex
+            }
+        }
+        return CcrBailoutAnalysis(worst: worst, worstLevelIndex: worstIdx, requiredById: required, diluentId: diluent.id,
+                                  diluentFallbackDepthM: fallbackDepth, abortedDepthM: abortedDepth)
     }
 
     static func toContingencySummary(_ title: String, _ subtitle: String, _ res: DivePlanResult) -> ContingencySummary {

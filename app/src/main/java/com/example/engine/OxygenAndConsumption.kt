@@ -444,7 +444,7 @@ object OxygenAndConsumption {
             val maxPpO2Seg = max(seg.ppO2Start, seg.ppO2End)
             val minPpO2Seg = kotlin.math.min(seg.ppO2Start, seg.ppO2End)
             val isDecoPhase = seg.type == SegmentType.STOP || seg.type == SegmentType.SWITCH ||
-                (seg.type == SegmentType.ASCENT && seg.gas.role == GasRole.DECO)
+                (seg.type == SegmentType.ASCENT && (seg.gas.role == GasRole.DECO || seg.gas.role == GasRole.BAILOUT))
             val maxSegDepth = max(seg.fromDepthM, seg.toDepthM)
 
             // Track continuous high-ppO2 deco exposure (for O2 Air Break check)
@@ -720,7 +720,7 @@ object OxygenAndConsumption {
 
         // 11. Deco Gas Strategy & Redundancy (HIGH)
         if (!isCcr && hasDecoStops) {
-            val enabledDecoGases = enabledGases.filter { it.role == GasRole.DECO }
+            val enabledDecoGases = enabledGases.filter { it.role == GasRole.DECO || it.role == GasRole.BAILOUT }
             if (enabledDecoGases.isEmpty() && (maxDepthM > 40.0 || totalDecoMin >= 25.0)) {
                 list += PlanAlert(
                     AlertLevel.HIGH,
@@ -851,7 +851,7 @@ object OxygenAndConsumption {
             val plannedBottomTime = activeLevels.first().timeMin
             val remainingNdl = ndlMin - plannedBottomTime
             if (plannedBottomTime >= ndlMin * 0.85 || remainingNdl <= 3.0) {
-                val hasDecoGas = enabledGases.any { it.role == GasRole.DECO }
+                val hasDecoGas = enabledGases.any { it.role == GasRole.DECO || it.role == GasRole.BAILOUT }
                 if (!hasDecoGas) {
                     list += PlanAlert(
                         AlertLevel.MEDIUM,
@@ -895,10 +895,11 @@ object OxygenAndConsumption {
                     )
                 }
                 // Check configured gas budget limits (LOW)
+                val isDecoRole = gc.gas.role == GasRole.DECO || gc.gas.role == GasRole.BAILOUT
                 val budgetLimit = when {
-                    gc.gas.role == GasRole.DECO && gc.gas.o2Pct >= 99 -> alerts.decoO2MaxLitres
-                    gc.gas.role == GasRole.DECO && gc.gas.o2Pct >= 50 -> alerts.decoMix50To99MaxLitres
-                    gc.gas.role == GasRole.DECO -> alerts.decoMixUpTo49MaxLitres
+                    isDecoRole && gc.gas.o2Pct >= 99 -> alerts.decoO2MaxLitres
+                    isDecoRole && gc.gas.o2Pct >= 50 -> alerts.decoMix50To99MaxLitres
+                    isDecoRole -> alerts.decoMixUpTo49MaxLitres
                     else -> alerts.bottomMixMaxLitres
                 }
                 if (gc.usedLitres > budgetLimit) {
