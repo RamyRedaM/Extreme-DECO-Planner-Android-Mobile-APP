@@ -172,7 +172,7 @@ The app has four tabs:
 
 | Tab | What you do there |
 |---|---|
-| **Settings** | Planning type, units, deco model, gradient factors, salinity, altitude, PPO2 and narcosis limits, ascent and descent rates, RMV, reserve rules, CCR setpoints, theme |
+| **Settings** | Planning type, units, deco model, diving agency for Best GAS Mix, gradient factors, salinity, altitude, PPO2 and narcosis limits, ascent and descent rates, RMV, reserve rules, CCR setpoints, theme |
 | **Planner** | Dive levels and dives in the day, Build Dive Profile, runtime table, summary (runtime, CNS, OTU, gas), colour-coded safety alerts, contingency plans, Surface Interval Calculator, PDF / CSV export, saved plans |
 | **Gases** | Recommend Best Mix, or add and edit your own travel, bottom, diluent, deco and bailout gases with cylinders |
 | **Charts** | Profile, partial pressures, tissue loading, gas consumption and M-value charts |
@@ -329,6 +329,30 @@ In **Best GAS Mix** mode, for the planned depth the app:
 | Density | Gas density at depth, in g/L |
 
 On the Gases tab, each gas's END and density are shown where it is breathed: bottom gas at max depth, travel gas at its MOD (capped at max depth), deco gas at its switch depth.
+
+### Diving agency methods
+
+Agencies choose bottom and deco gases in different ways. In **Settings › Diving Agency** you pick whose method Best GAS Mix follows. The default, **Optimized**, is the app's own calculation.
+
+| Agency | Method | Bottom gas | Deco gases |
+|---|---|---|---|
+| **Optimized** (default) | Calculated from your limits | ppO2 Bottom, your Max END and density limit | EAN50, O2, plus a deep helium stage below 54 m and a travel gas when needed |
+| **TDI**, **RAID** | Deep air to 55 m | Air (EAN32 when shallow enough), trimix deeper than 55 m | EAN50 at 21 m, O2 at 6 m |
+| **IANTD** | Deep air to 52 m | Air, trimix deeper than 52 m | EAN50, O2 |
+| **PADI TecRec** | Air / nitrox to 50 m (Tec 50) | Air, trimix deeper than 50 m | EAN50, O2 |
+| **GUE** | Standard gases, helium below 30 m | EAN32 to 30 m, 30/30 to 36 m, 21/35 to 48 m, 18/45 to 60 m, 15/55 to 75 m, 10/70 deeper | EAN50, O2 (21/35 travel when the bottom mix is hypoxic) |
+| **UTD** | Standard gases, helium below 30 m | As GUE, with 25/25 instead of 30/30 (to 40 m) | EAN50, O2 |
+| **BSAC** | Gas density | Calculated for ppO2 1.4 bar and density about 5.2 g/L | Calculated |
+| **NAUI Tec**, **SSI** | END 30 m | Calculated with END limited to 30 m | Calculated |
+
+Notes:
+- Air is only used where it also meets your **PPO2 Bottom** limit (air at 55 m is 1.37 bar; with PPO2 Bottom 1.2 the app switches to trimix).
+- **Deep air alerts:** with TDI, RAID, IANTD or PADI, air within the agency limit shows gas density above 6.2 g/L as **HIGH** (not CRITICAL) and narcosis as **MEDIUM**, because it is within those agencies' standards. Air at 55 m is about 8 g/L, above the 6.2 g/L maximum recommended by Anthony and Mitchell's research, so the warning stays visible.
+- The **GUE / UTD** depth ranges are typical published values; check them against your own course material.
+- In **CCR**, the agency sets the bottom bailout gas (for example air to 55 m for TDI, the standard gas for GUE). The diluent is always chosen for ppO2 about 1.1 bar.
+- Within 40 m and inside the NDL, recreational mode uses nitrox, except for GUE and UTD, which use their standard gas (for example 30/30 at 35 m).
+
+Sources: [TDI Extended Range](https://www.tdisdi.com/), [RAID technical pathway](https://diveraid.com/raid-new-tech-pathway-the-deep-option), [IANTD Normoxic Trimix](https://iantd.com/), [PADI Tec 50](https://www.padi.com/education/technical-diving), [GUE on gas density](https://gue.com/blog/density-discords-understanding-and-applying-gas-density-research/), [BSAC recommended gas mixtures](https://bsac.com/advice-and-support/technical-diving/gas-density-tables/bsac-recommended-diving-gas-mixtures-for-open-circuit-diving), [DAN on gas density](https://dan.org/alert-diver/article/performance-under-pressure/), [Alert Diver: narcosis and training agencies](https://alertdiver.eu/en_US/articles/rapture-of-the-tech-depth-narcosis-and-training-agencies).
 
 ### CCR mode
 
@@ -527,8 +551,9 @@ Run the unit tests from Android Studio: right-click `app/src/test` and choose **
 - The four alert levels, including the CNS 80% single-dive warning and the new HIGH / MEDIUM checks
 - The ZHL-16C Surface Interval Calculator
 - One test per engine audit fix (CCR descent setpoint, next-dive gas, rock-bottom, lost-gas, travel gas display, Red Sea density, deco ppN2 alert, practical helium)
+- Diving agency methods: TDI / RAID / IANTD / PADI air limits, GUE / UTD standard gases, BSAC density, NAUI / SSI END, deep-air alert levels, every agency planning at every depth
 - CCR Best GAS Mix and bailout: diluent ppO2, bailout roles, bailout from the end of each level, cylinder sizing, insufficient-bailout and diluent-fallback alerts
-- Cross-platform parity: the iPhone engine must match the Android engine on 14 reference plans (including two CCR dives and their bailouts), Best Mix for OC and CCR, and the SI calculator
+- Cross-platform parity: the iPhone engine must match the Android engine on 16 reference plans (including two CCR dives with their bailouts, a TDI deep-air dive and a GUE standard-gas dive), Best Mix for OC, CCR and seven agencies, and the SI calculator
 
 Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
 
