@@ -324,12 +324,28 @@ In **Best GAS Mix** mode, for the planned depth the app:
 | Metric | Meaning |
 |---|---|
 | MOD | Deepest depth where ppO2 stays within the limit |
-
-On the Gases tab, each gas's END and density are shown where it is breathed: bottom gas at max depth, travel gas at its MOD (capped at max depth), deco gas at its switch depth.
-
 | Minimum depth | Shallowest depth where the gas is not hypoxic |
 | END | Equivalent narcotic depth |
 | Density | Gas density at depth, in g/L |
+
+On the Gases tab, each gas's END and density are shown where it is breathed: bottom gas at max depth, travel gas at its MOD (capped at max depth), deco gas at its switch depth.
+
+### CCR mode
+
+In CCR, Best GAS Mix builds a rebreather kit instead of an open circuit one:
+
+| Gas | How it is chosen |
+|---|---|
+| **Diluent** | ppO2 about **1.10 bar** at max depth (so a diluent flush stays below the bottom setpoint), never richer than air, helium for END, ppN2 and density. Default 3 L cylinder |
+| **Bottom bailout** | Open circuit gas breathable at max depth, with the same rules as the OC bottom mix (PPO2 Bottom, END, density) |
+| **Deep bailout** | Below 54 m with helium: an intermediate trimix stage at 27 to 39 m, checked for ICD |
+| **Bailout @ 21 m / 6 m** | EAN50 and oxygen (or the richest mix your PPO2 Deco allows) |
+
+There is no travel gas: the descent is on the loop. The loop never breathes the bailout gases.
+
+**Bailout plan:** the app bails out at the **end of every bottom level** (the worst points), with the tissues, CNS and OTU from the loop at that moment. It adds **2 minutes of problem solving** at depth, then the open circuit ascent on the bailout gases at **bottom and deco RMV × stress factor**. Your reserve rules still apply (Rock-Bottom becomes Thirds and Lost-Gas becomes 1.5×, since the bailout is already the emergency). The longest bailout is shown as the **CCR OC Bailout** contingency.
+
+**Cylinder sizing:** in Best GAS Mix, each bailout cylinder count is sized from the most that gas needs in any bailout scenario. In User input GAS mode, the app raises a CRITICAL alert when a bailout gas is too small, and a HIGH alert when no bailout gas can be breathed at the bottom (the plan would have to use the diluent on open circuit).
 
 ---
 
@@ -390,7 +406,7 @@ A plan with any CRITICAL alert is marked as having errors. The plan is still sho
 | **Deco gas strategy** | Deco dive with no deco gas, or a deep dive with no mid-range deco gas: HIGH |
 | **Rates** | Fast ascent (above 12 m/min to the first stop, or 9 m/min to the surface): MEDIUM. Fast descent (above 24 m/min): MEDIUM |
 | **Deep helium (HPNS)** | 150 m or deeper: CRITICAL. 120 m or deeper with high helium or a fast descent: HIGH |
-| **CCR** | Diluent above 1.60 bar ppO2 at depth, or no / too little bailout gas: CRITICAL. Diluent above 1.40 bar: HIGH |
+| **CCR** | Diluent above 1.60 bar ppO2 at depth, no bailout gas, a bailout gas too small for the worst-case bailout, or a bailout that cannot be completed: CRITICAL. Diluent above 1.40 bar, or no bailout gas breathable at the bottom: HIGH |
 | **Repetitive dives** | Surface interval under 30 min (or high carried-over CNS): HIGH. Under 60 min: MEDIUM. Reverse profile (deeper than the previous dive): HIGH or MEDIUM |
 | **Profile shape** | Yo-yo (sawtooth) multi-level profile: MEDIUM. Planned time close to the NDL: MEDIUM. 6 m last stop on heavy deco: MEDIUM |
 | **Exposure** | Time to surface of 90 min or more, or long deco in cold water: HIGH. Long dive or cold water (10 °C or less): MEDIUM |
@@ -511,6 +527,8 @@ Run the unit tests from Android Studio: right-click `app/src/test` and choose **
 - The four alert levels, including the CNS 80% single-dive warning and the new HIGH / MEDIUM checks
 - The ZHL-16C Surface Interval Calculator
 - One test per engine audit fix (CCR descent setpoint, next-dive gas, rock-bottom, lost-gas, travel gas display, Red Sea density, deco ppN2 alert, practical helium)
+- CCR Best GAS Mix and bailout: diluent ppO2, bailout roles, bailout from the end of each level, cylinder sizing, insufficient-bailout and diluent-fallback alerts
+- Cross-platform parity: the iPhone engine must match the Android engine on 14 reference plans (including two CCR dives and their bailouts), Best Mix for OC and CCR, and the SI calculator
 
 Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
 
