@@ -558,7 +558,31 @@ object OxygenAndConsumption {
             // 5. Gas Density — UHMS / Mitchell Consensus:
             //    CRITICAL (> 6.2 g/L CO2 retention redline), HIGH (> configured target, default 5.2 g/L),
             //    MEDIUM (> 5.2 g/L UHMS ideal if user raised custom limit)
-            if (seg.densityGL > 6.2 + 0.02 && !critDensity) {
+            // Deep-air agencies (TDI, RAID, IANTD, PADI): air or nitrox within the agency air limit is a trained
+            // practice, so density above 6.2 g/L is HIGH (not CRITICAL) and narcosis is a MEDIUM advisory.
+            val airLimit = input.general.gasAgency.airLimitM
+            val deepAirOk = airLimit != null && !seg.isCcr && seg.gas.he < 0.005 &&
+                max(seg.fromDepthM, seg.toDepthM) <= airLimit + 0.5
+            if (deepAirOk && seg.densityGL > 6.2 + 0.02 && !critDensity && !highDensity) {
+                highDensity = true
+                list += PlanAlert(
+                    AlertLevel.HIGH,
+                    AlertCode.DENSITY_HIGH,
+                    "Gas density ${"%.2f".format(java.util.Locale.US, seg.densityGL)} g/L on ${seg.gas.displayName}: within ${input.general.gasAgency.label} deep-air standards (air to ${airLimit!!.roundToInt()} m) but above the 6.2 g/L research maximum. CO₂ retention risk rises with exertion.",
+                    idx
+                )
+            } else if (deepAirOk) {
+                // density inside the 6.2 g/L maximum: same checks as below
+                if (!highDensity && seg.densityGL > dive.maxGasDensityGL + 0.05 && seg.densityGL <= 6.22) {
+                    highDensity = true
+                    list += PlanAlert(
+                        AlertLevel.HIGH,
+                        AlertCode.DENSITY_HIGH,
+                        "Gas density ${"%.2f".format(seg.densityGL)} g/L on ${seg.gas.displayName} exceeds your ${"%.1f".format(dive.maxGasDensityGL)} g/L target.",
+                        idx
+                    )
+                }
+            } else if (seg.densityGL > 6.2 + 0.02 && !critDensity) {
                 critDensity = true
                 list += PlanAlert(
                     AlertLevel.CRITICAL,
@@ -585,7 +609,17 @@ object OxygenAndConsumption {
             }
 
             // 6. Narcosis: 3-Tier END & ppN2 Escalation (CRITICAL > 45 m, HIGH > 40 m, MEDIUM > maxEndM)
-            if (!critEnd && (seg.endM > 45.0 || seg.ppN2End > 4.50)) {
+            if (deepAirOk) {
+                if (!medEnd && !highEnd && !critEnd && (seg.endM > dive.maxEndM + 1.0 || seg.ppN2End > dive.ppN2Max + 0.08)) {
+                    medEnd = true
+                    list += PlanAlert(
+                        AlertLevel.MEDIUM,
+                        AlertCode.END_HIGH,
+                        "Deep air narcosis on ${seg.gas.displayName}: END ${seg.endM.roundToInt()} m, ppN₂ ${"%.2f".format(java.util.Locale.US, seg.ppN2End)} bar (within ${input.general.gasAgency.label} air limit ${airLimit!!.roundToInt()} m). Keep task loading low.",
+                        idx
+                    )
+                }
+            } else if (!critEnd && (seg.endM > 45.0 || seg.ppN2End > 4.50)) {
                 critEnd = true
                 list += PlanAlert(
                     AlertLevel.CRITICAL,

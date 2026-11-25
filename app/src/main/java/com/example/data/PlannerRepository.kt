@@ -111,7 +111,8 @@ class PlannerRepository(private val context: Context) {
                 planStyle = safeEnum(gObj.optString("planStyle"), PlanStyle.DETAILED),
                 btIncludesDescent = gObj.optBoolean("btIncludesDescent", true),
                 standardMixesOnly = gObj.optBoolean("standardMixesOnly", false),
-                gasSelectionMode = safeEnum(gObj.optString("gasSelectionMode"), GasSelectionMode.BEST_GAS_MIX)
+                gasSelectionMode = safeEnum(gObj.optString("gasSelectionMode"), GasSelectionMode.BEST_GAS_MIX),
+                gasAgency = safeEnum(gObj.optString("gasAgency"), GasAgency.OPTIMIZED)
             )
             val dObj = root.getJSONObject("dive")
             val dive = DiveSettings(
@@ -268,6 +269,7 @@ class PlannerRepository(private val context: Context) {
             put("btIncludesDescent", input.general.btIncludesDescent)
             put("standardMixesOnly", input.general.standardMixesOnly)
             put("gasSelectionMode", input.general.gasSelectionMode.name)
+            put("gasAgency", input.general.gasAgency.name)
         })
         root.put("dive", JSONObject().apply {
             put("ppO2Bottom", input.dive.ppO2Bottom)

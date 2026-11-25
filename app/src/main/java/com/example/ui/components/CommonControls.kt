@@ -198,7 +198,9 @@ fun BestGasKitGrid(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
                 )
             }
-            val mixLabel = if (rec.bottomGas.o2Pct == 32) {
+            val mixLabel = if (rec.bottomGas.hePct > 0) {
+                "REC Best Gas Mix — Trimix (${rec.bottomGas.displayName})"
+            } else if (rec.bottomGas.o2Pct == 32) {
                 "REC Best Gas Mix — Default Nitrox (EAN32)"
             } else if (rec.bottomGas.o2Pct == 21) {
                 "REC Best Gas Mix — Air (21% O₂)"

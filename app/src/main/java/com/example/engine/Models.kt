@@ -127,6 +127,52 @@ data class DiveLevel(
     val gasId: String? = null  // null = auto bottom mix
 )
 
+/** How an agency picks the bottom gas for Best GAS Mix. */
+enum class GasMethod { END_DENSITY, DEEP_AIR, STANDARD_GASES }
+
+/**
+ * Diving agency whose gas-selection method Best GAS Mix follows.
+ * DEEP_AIR: air (or EAN32 when shallow enough) down to [airLimitM], deco EAN50 + O2, trimix deeper.
+ * STANDARD_GASES: fixed mixes by depth range ([standardTable]: max depth, O2 %, He %), deco EAN50 + O2.
+ * END_DENSITY: mix calculated from ppO2, END and density ([endMaxM] / [densityMaxGL] override your Settings when set).
+ */
+enum class GasAgency(
+    val label: String,
+    val method: GasMethod,
+    val description: String,
+    val airLimitM: Double? = null,
+    val endMaxM: Double? = null,
+    val densityMaxGL: Double? = null,
+    val standardTable: List<Triple<Double, Int, Int>> = emptyList()
+) {
+    OPTIMIZED("Optimized (your limits)", GasMethod.END_DENSITY,
+        "Mix calculated from your ppO₂, Max END and density limits, with travel gas and a deep deco stage when needed."),
+    TDI("TDI", GasMethod.DEEP_AIR,
+        "TDI Extended Range: air bottom gas to 55 m with EAN50 and O₂ deco. Trimix beyond 55 m.", airLimitM = 55.0),
+    RAID("RAID", GasMethod.DEEP_AIR,
+        "RAID Extended Decompression: air to 55 m with EAN50 and O₂ deco. Trimix beyond 55 m.", airLimitM = 55.0),
+    IANTD("IANTD", GasMethod.DEEP_AIR,
+        "IANTD: air to 52 m with EAN50 and O₂ deco. Trimix beyond 52 m.", airLimitM = 52.0),
+    PADI("PADI TecRec", GasMethod.DEEP_AIR,
+        "PADI Tec 50: air or nitrox to 50 m with two deco gases (EAN50, O₂). Trimix beyond 50 m.", airLimitM = 50.0),
+    GUE("GUE", GasMethod.STANDARD_GASES,
+        "GUE standard gases: helium below 30 m (EAN32, 30/30, 21/35, 18/45, 15/55, 10/70), deco EAN50 and O₂. Check depth ranges with your instructor.",
+        standardTable = listOf(Triple(30.0, 32, 0), Triple(36.0, 30, 30), Triple(48.0, 21, 35), Triple(60.0, 18, 45), Triple(75.0, 15, 55), Triple(999.0, 10, 70))),
+    UTD("UTD", GasMethod.STANDARD_GASES,
+        "UTD standard gases: helium below 30 m (EAN32, 25/25, 21/35, 18/45, 15/55, 10/70), deco EAN50 and O₂. Check depth ranges with your instructor.",
+        standardTable = listOf(Triple(30.0, 32, 0), Triple(40.0, 25, 25), Triple(48.0, 21, 35), Triple(60.0, 18, 45), Triple(75.0, 15, 55), Triple(999.0, 10, 70))),
+    BSAC("BSAC", GasMethod.END_DENSITY,
+        "BSAC: mix chosen for ppO₂ 1.4 bar and gas density about 5.2 g/L (BSAC gas density tables).", densityMaxGL = 5.2),
+    NAUI("NAUI Tec", GasMethod.END_DENSITY,
+        "NAUI Tec: no deep air, trimix with END limited to 30 m.", endMaxM = 30.0),
+    SSI("SSI", GasMethod.END_DENSITY,
+        "SSI Extended Range: trimix with END limited to 30 m.", endMaxM = 30.0);
+
+    /** Standard mix for a depth (STANDARD_GASES only): O2 % and He %. */
+    fun standardMixFor(depthM: Double): Pair<Int, Int>? =
+        standardTable.firstOrNull { depthM <= it.first + 1e-6 }?.let { it.second to it.third }
+}
+
 data class GeneralSettings(
     val planningType: PlanningType = PlanningType.OPEN_CIRCUIT,
     val units: UnitSystem = UnitSystem.METRIC,
@@ -144,7 +190,8 @@ data class GeneralSettings(
     val planStyle: PlanStyle = PlanStyle.DETAILED,
     val btIncludesDescent: Boolean = true,
     val standardMixesOnly: Boolean = false,
-    val gasSelectionMode: GasSelectionMode = GasSelectionMode.BEST_GAS_MIX
+    val gasSelectionMode: GasSelectionMode = GasSelectionMode.BEST_GAS_MIX,
+    val gasAgency: GasAgency = GasAgency.OPTIMIZED
 ) {
     val effectiveSalinity: Double
         get() = when (salinityPreset) {

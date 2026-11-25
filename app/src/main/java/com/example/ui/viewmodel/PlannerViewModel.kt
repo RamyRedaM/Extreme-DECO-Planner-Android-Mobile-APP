@@ -300,7 +300,7 @@ class PlannerViewModel(application: Application) : AndroidViewModel(application)
             } else d
         }
         val msg = if (rec.isRecreational) {
-            "REC Dive (Within NDL): Best GAS Mix ${rec.bottomGas.displayName} (Air / Nitrox only)"
+            "REC Dive (Within NDL): Best GAS Mix ${rec.bottomGas.displayName}" + if (rec.bottomGas.hePct > 0) " (${state.input.general.gasAgency.label} standard gas)" else " (Air / Nitrox only)"
         } else if (rec.bailoutBottomGas != null) {
             "CCR Best GAS Mix: diluent ${rec.bottomGas.displayName} · bailout ${rec.decoGases.fold(rec.bailoutBottomGas.displayName) { acc, g -> "$acc · ${g.displayName}" }}"
         } else {

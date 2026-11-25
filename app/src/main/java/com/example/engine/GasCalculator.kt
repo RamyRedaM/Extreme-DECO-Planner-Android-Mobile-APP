@@ -269,10 +269,19 @@ object GasCalculator {
         val notes = mutableListOf<String>()
         val validLevels = levels.filter { it.depthM > 0.0 && it.timeMin > 0.0 }
         val depth = (validLevels.maxOfOrNull { it.depthM } ?: maxDepthM).coerceAtLeast(3.0)
+        // Agency method: END / density limits of the selected agency replace your own for the mix calculation
+        val agency = general.gasAgency
+        @Suppress("NAME_SHADOWING")
+        val dive = dive.copy(
+            maxEndM = agency.endMaxM ?: dive.maxEndM,
+            maxGasDensityGL = agency.densityMaxGL ?: dive.maxGasDensityGL
+        )
 
         // REC Recreational Dive Check: under 40m AND within NDL (no decompression stops)
         if (general.planningType == PlanningType.OPEN_CIRCUIT && depth < 40.0 && validLevels.isNotEmpty()) {
-            val recGas = computeRecreationalMix(depth, general, dive, env, existingGases)
+            val recGas = agency.standardMixFor(depth)?.takeIf { agency.method == GasMethod.STANDARD_GASES }
+                ?.let { (o2p, hep) -> Gas.fromPercent("best_bottom", o2p, hep, GasRole.BOTTOM, cylinder = resolveCylinder("best_bottom", GasRole.BOTTOM, 1, existingGases)) }
+                ?: computeRecreationalMix(depth, general, dive, env, existingGases)
             val probeInput = DivePlanInput(
                 general = general.copy(gasSelectionMode = GasSelectionMode.USER_INPUT_GAS),
                 dive = dive,
@@ -295,7 +304,11 @@ object GasCalculator {
             if (isWithinNdl) {
                 val recMetrics = gasMetrics(recGas, depth, env, dive)
                 val recNotes = listOf(
-                    "REC Recreational Dive (< 40m, within NDL): ${recGas.displayName} selected (Air / Nitrox only — no DECO bottles or Trimix)."
+                    if (recGas.hePct > 0) {
+                        "REC Recreational Dive (< 40m, within NDL): ${agency.label} standard gas ${recGas.displayName}, no DECO bottles."
+                    } else {
+                        "REC Recreational Dive (< 40m, within NDL): ${recGas.displayName} selected (Air / Nitrox only — no DECO bottles or Trimix)."
+                    }
                 )
                 return MixRecommendation(
                     bottomGas = recGas,
@@ -321,6 +334,9 @@ object GasCalculator {
         if (general.planningType == PlanningType.CCR) {
             return recommendCcrBestMix(depth, general, dive, env, existingGases, alerts)
         }
+
+        // Deep-air and standard-gas agencies (TDI, RAID, IANTD, PADI, GUE, UTD)
+        recommendAgencyKit(depth, general, dive, env, existingGases)?.let { return it }
 
         val bottomRole = if (general.planningType == PlanningType.CCR) GasRole.DILUENT else GasRole.BOTTOM
         val bottomCyl = resolveCylinder("best_bottom", bottomRole, 2, existingGases)
@@ -545,6 +561,81 @@ object GasCalculator {
         )
     }
 
+    /** True when a deep-air agency allows air at this depth (within its air limit and the ppO2 Bottom limit). */
+    fun deepAirApplies(depthM: Double, agency: GasAgency, dive: DiveSettings, env: Environment): Boolean {
+        val limit = agency.airLimitM ?: return false
+        return agency.method == GasMethod.DEEP_AIR && depthM <= limit + 1e-6 &&
+            UnitsAndPressure.ambientPressure(depthM, env) * 0.21 <= dive.ppO2Bottom + 0.005
+    }
+
+    /** Bottom gas the selected agency uses at this depth, or null when the agency calculates the mix. */
+    fun agencyBottomGas(depthM: Double, general: GeneralSettings, dive: DiveSettings, env: Environment,
+                        id: String, role: GasRole, cylinder: CylinderConfig): Gas? {
+        val agency = general.gasAgency
+        return when (agency.method) {
+            GasMethod.DEEP_AIR -> if (!deepAirApplies(depthM, agency, dive, env)) null else {
+                val ean32Ok = UnitsAndPressure.ambientPressure(depthM, env) * 0.32 <= dive.ppO2Bottom + 0.005
+                Gas.fromPercent(id, if (ean32Ok) 32 else 21, 0, role, cylinder = cylinder)
+            }
+            GasMethod.STANDARD_GASES -> agency.standardMixFor(depthM)?.let { (o2p, hep) -> Gas.fromPercent(id, o2p, hep, role, cylinder = cylinder) }
+            GasMethod.END_DENSITY -> null
+        }
+    }
+
+    /**
+     * Open-circuit kit for deep-air (TDI, RAID, IANTD, PADI) and standard-gas (GUE, UTD) agencies:
+     * the agency bottom gas, EAN50 at 21 m and O2 at 6 m, no deep stage. A 21/35 travel gas is added only
+     * when the bottom mix is hypoxic. Returns null when the agency calculates the mix instead (or air is out of range).
+     */
+    private fun recommendAgencyKit(depth: Double, general: GeneralSettings, dive: DiveSettings, env: Environment,
+                                   existingGases: List<Gas>): MixRecommendation? {
+        val agency = general.gasAgency
+        val bottomCyl = resolveCylinder("best_bottom", GasRole.BOTTOM, 2, existingGases)
+        val bottom = agencyBottomGas(depth, general, dive, env, "best_bottom", GasRole.BOTTOM, bottomCyl) ?: return null
+
+        fun stage(id: String, switchM: Double, standardPct: Int, standardMinPpO2: Double, lowPct: Int, highPct: Int): Gas {
+            val pct = if (dive.ppO2Deco >= standardMinPpO2) standardPct else
+                floor((dive.ppO2Deco / UnitsAndPressure.ambientPressure(switchM, env)) * 100.0).toInt().coerceIn(lowPct, highPct)
+            return Gas.fromPercent(id, pct, 0, GasRole.DECO, modOverrideM = switchM, cylinder = resolveCylinder(id, GasRole.DECO, 1, existingGases))
+        }
+        val d21 = stage("best_deco_21m_ean50", 21.0, 50, 1.56, 32, 50).takeIf { depth > 21.0 && bottom.o2Pct < it.o2Pct }
+        val d6 = stage("best_deco_6m_o2", 6.0, 100, 1.58, 50, 100).takeIf { depth > 6.0 && bottom.o2Pct < it.o2Pct }
+        val decoGases = listOfNotNull(d21, d6)
+
+        val travelCyl = resolveCylinder("best_travel", GasRole.TRAVEL, 1, existingGases)
+        val hypoxicBottom = minDepthM(bottom, dive.ppO2Min, env) > 0.0
+        val travel = if (hypoxicBottom) Gas.fromPercent("best_travel", 21, 35, GasRole.TRAVEL, cylinder = travelCyl) else null
+        val travelNote = if (travel != null) {
+            "0 m → ${minOf(depth - 3.0, modDisplayM(travel, dive.ppO2Bottom, env)).roundToInt()} m (21/35 travel, hypoxic bottom mix)"
+        } else {
+            "0 m → ${depth.roundToInt()} m (bottom mix breathable from surface)"
+        }
+        val method = if (agency.method == GasMethod.DEEP_AIR) "air / nitrox to ${agency.airLimitM?.roundToInt()} m" else "standard gases"
+        val notes = listOf(
+            "${agency.label} method ($method): bottom ${bottom.displayName}" +
+                (travel?.let { " · travel ${it.displayName}" } ?: "") +
+                decoGases.joinToString("") { " · ${it.displayName} @ ${it.modOverrideM?.roundToInt()} m" } + "."
+        )
+        val metrics = gasMetrics(bottom, depth, env, dive)
+        return MixRecommendation(
+            bottomGas = bottom,
+            travelGas = travel,
+            travelGasDisplay = travel ?: bottom.copy(id = "best_travel_same", role = GasRole.TRAVEL, cylinder = travelCyl),
+            travelRangeNote = travelNote,
+            deco6mO2 = d6,
+            deco21mEan50 = d21,
+            deepDecoGas = null,
+            decoGases = decoGases,
+            plannerGases = listOfNotNull(travel, bottom) + decoGases,
+            modM = metrics.modM,
+            minDepthM = metrics.minDepthM,
+            endAtMaxDepthM = metrics.endM,
+            densityAtMaxDepthGL = metrics.densityGL,
+            ppO2AtMaxDepth = metrics.ppO2,
+            notes = notes
+        )
+    }
+
     private fun cylinderFor(slotId: String, role: GasRole, existingGases: List<Gas>, default: CylinderConfig): CylinderConfig =
         existingGases.firstOrNull { it.id == slotId }?.cylinder
             ?: existingGases.firstOrNull { it.role == role }?.cylinder
@@ -619,6 +710,7 @@ object GasCalculator {
         if (general.standardMixesOnly) {
             snapToStandard(bottomBailout, depth, env, dive)?.let { bottomBailout = it }
         }
+        agencyBottomGas(depth, general, dive, env, "best_bailout_bottom", GasRole.BAILOUT, bbCyl)?.let { bottomBailout = it }
 
         // 3. Deep bailout stage (> 54 m with helium), ICD-checked against the bottom bailout
         val deepBailout: Gas? = if (depth > 54.0 && bottomBailout.hePct >= 20) {

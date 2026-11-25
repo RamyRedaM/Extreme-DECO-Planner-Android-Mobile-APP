@@ -123,6 +123,28 @@ fun SetupScreen(
                     )
                 }
 
+                Text("Diving Agency (Best GAS Mix method)", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .testTag("gas_agency_row"),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GasAgency.entries.forEach { a ->
+                        FilterChip(
+                            selected = g.gasAgency == a,
+                            onClick = { viewModel.updateGeneral { it.copy(gasAgency = a) } },
+                            label = { Text(a.label) }
+                        )
+                    }
+                }
+                Text(
+                    g.gasAgency.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 Text("Gradient Factors (Manual Input)", style = MaterialTheme.typography.labelLarge)
                 NumberStepperRow(
                     label = "GF Low",

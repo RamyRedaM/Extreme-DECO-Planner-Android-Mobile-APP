@@ -78,6 +78,13 @@ class ParityFixturesTest {
             )
             out += "S11" to s11
             out += "S11bo" to DivePlannerEngine.ccrBailoutAnalysis(s11.input, s11.segments, s11.levelEnds)!!.worst!!
+
+            // S12: TDI deep air 55 m / 20 min (air, EAN50, O2), S13: GUE 70 m / 20 min standard gases
+            for ((id, agency, depth) in listOf(Triple("S12", GasAgency.TDI, 55.0), Triple("S13", GasAgency.GUE, 70.0))) {
+                val ga = GeneralSettings(gasAgency = agency)
+                val r = GasCalculator.recommendBestMix(depth, ga, DiveSettings())
+                out += id to DivePlannerEngine.planDive(DivePlanInput(general = ga, gases = r.plannerGases, levels = listOf(DiveLevel("a", depth, 20.0))))
+            }
             return out
         }
     }
@@ -91,6 +98,11 @@ class ParityFixturesTest {
         println("DIAG PARITY|SI|" + listOf("%.2f".format(java.util.Locale.US, si.remainingExcessInertPct), si.leadingCompartmentNumber, "%.2f".format(java.util.Locale.US, si.surfaceGfAfterPct), "%.2f".format(java.util.Locale.US, si.cnsAfterPct), "%.2f".format(java.util.Locale.US, si.nextDiveNdlMin), "%.2f".format(java.util.Locale.US, si.freshNdlMin), si.estimatedCleanTimeMin).joinToString("|"))
         scenarios().forEach { (id, r) -> println("DIAG " + fp(id, r)) }
         val s10 = scenarios().first { it.first == "S10" }.second
+        val agencyLine = listOf(GasAgency.TDI to 50.0, GasAgency.IANTD to 53.0, GasAgency.GUE to 70.0, GasAgency.UTD to 38.0, GasAgency.BSAC to 60.0, GasAgency.NAUI to 50.0, GasAgency.SSI to 45.0)
+            .joinToString(";") { (a, d) ->
+                a.name + "@" + d.toInt() + "=" + GasCalculator.recommendBestMix(d, GeneralSettings(gasAgency = a), DiveSettings()).plannerGases.joinToString(",") { "${it.role.name}:${it.displayName}" }
+            }
+        println("DIAG PARITY|BMAG|" + agencyLine)
         println("DIAG PARITY|BMCCR|" + s10.input.gases.joinToString(",") { "${it.role.name}:${it.displayName}:${it.cylinder.count}" })
     }
 }
