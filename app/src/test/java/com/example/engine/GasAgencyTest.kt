@@ -86,10 +86,11 @@ class GasAgencyTest {
     fun densityAndEndAgenciesUseTheirLimits() {
         val bsac = rec(GasAgency.BSAC, 60.0)
         assertTrue(GasCalculator.densityGL(bsac.bottomGas, 60.0, env) <= 5.25)
-        val naui = rec(GasAgency.NAUI, 50.0, dive = DiveSettings(maxEndM = 40.0))
+        val loose = DiveSettings(maxEndM = 40.0, maxGasDensityGL = 8.0)
+        val naui = rec(GasAgency.NAUI, 50.0, dive = loose)
         assertTrue(GasCalculator.endM(naui.bottomGas, 50.0, env, false) <= 31.0)
         // Optimized keeps your own Max END
-        val opt = rec(GasAgency.OPTIMIZED, 50.0, dive = DiveSettings(maxEndM = 40.0))
+        val opt = rec(GasAgency.OPTIMIZED, 50.0, dive = loose)
         assertTrue(opt.bottomGas.hePct < naui.bottomGas.hePct)
     }
 

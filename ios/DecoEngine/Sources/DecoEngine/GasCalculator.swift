@@ -145,6 +145,11 @@ public enum GasCalculator {
                                         levels: [DiveLevel] = [], previousTissues: TissueState? = nil,
                                         surfaceIntervalMin: Double = 0.0,
                                         consumption: ConsumptionSettings = ConsumptionSettings()) -> MixRecommendation {
+        // Agency method: END / density limits of the selected agency replace your own for the mix calculation
+        let agency = general.gasAgency
+        var dive = dive
+        if let e = agency.endMaxM { dive.maxEndM = e }
+        if let d = agency.densityMaxGL { dive.maxGasDensityGL = d }
         let env = UnitsAndPressure.buildEnvironment(general)
         var notes = [String]()
         let validLevels = levels.filter { $0.depthM > 0.0 && $0.timeMin > 0.0 }
@@ -152,7 +157,12 @@ public enum GasCalculator {
 
         // REC Recreational Dive: under 40 m and within NDL
         if general.planningType == .openCircuit && depth < 40.0 && !validLevels.isEmpty {
-            let recGas = computeRecreationalMix(depth, general, dive, env, existingGases)
+            let recGas: Gas
+            if agency.method == .standardGases, let m = agency.standardMixFor(depth) {
+                recGas = Gas.fromPercent("best_bottom", m.0, m.1, .bottom, cylinder: resolveCylinder("best_bottom", .bottom, 1, existingGases))
+            } else {
+                recGas = computeRecreationalMix(depth, general, dive, env, existingGases)
+            }
             var probeInput = DivePlanInput()
             probeInput.general = general
             probeInput.general.gasSelectionMode = .userInputGas
@@ -172,7 +182,9 @@ public enum GasCalculator {
                     deco6mO2: nil, deco21mEan50: nil, deepDecoGas: nil, decoGases: [], plannerGases: [recGas],
                     modM: m.modM, minDepthM: m.minDepthM, endAtMaxDepthM: m.endM, densityAtMaxDepthGL: m.densityGL,
                     ppO2AtMaxDepth: m.ppO2,
-                    notes: ["REC Recreational Dive (< 40m, within NDL): \(recGas.displayName) selected (Air / Nitrox only — no DECO bottles or Trimix)."],
+                    notes: [recGas.hePct > 0
+                            ? "REC Recreational Dive (< 40m, within NDL): \(agency.label) standard gas \(recGas.displayName), no DECO bottles."
+                            : "REC Recreational Dive (< 40m, within NDL): \(recGas.displayName) selected (Air / Nitrox only — no DECO bottles or Trimix)."],
                     isRecreational: true)
             }
         }
@@ -180,6 +192,9 @@ public enum GasCalculator {
         if general.planningType == .ccr {
             return recommendCcrBestMix(depth, general, dive, env, existingGases, alerts)
         }
+
+        // Deep-air and standard-gas agencies (TDI, RAID, IANTD, PADI, GUE, UTD)
+        if let kit = recommendAgencyKit(depth, general, dive, env, existingGases) { return kit }
 
         let bottomRole: GasRole = general.planningType == .ccr ? .diluent : .bottom
         let bottomCyl = resolveCylinder("best_bottom", bottomRole, 2, existingGases)
@@ -316,6 +331,72 @@ public enum GasCalculator {
                                  densityAtMaxDepthGL: metrics.densityGL, ppO2AtMaxDepth: metrics.ppO2, notes: notes)
     }
 
+    /// True when a deep-air agency allows air at this depth (within its air limit and the ppO2 Bottom limit).
+    public static func deepAirApplies(_ depthM: Double, _ agency: GasAgency, _ dive: DiveSettings, _ env: Environment) -> Bool {
+        guard let limit = agency.airLimitM else { return false }
+        return agency.method == .deepAir && depthM <= limit + 1e-6 &&
+            UnitsAndPressure.ambientPressure(depthM, env) * 0.21 <= dive.ppO2Bottom + 0.005
+    }
+
+    /// Bottom gas the selected agency uses at this depth, or nil when the agency calculates the mix.
+    public static func agencyBottomGas(_ depthM: Double, _ general: GeneralSettings, _ dive: DiveSettings, _ env: Environment,
+                                       _ id: String, _ role: GasRole, _ cylinder: CylinderConfig) -> Gas? {
+        let agency = general.gasAgency
+        switch agency.method {
+        case .deepAir:
+            guard deepAirApplies(depthM, agency, dive, env) else { return nil }
+            let ean32Ok = UnitsAndPressure.ambientPressure(depthM, env) * 0.32 <= dive.ppO2Bottom + 0.005
+            return Gas.fromPercent(id, ean32Ok ? 32 : 21, 0, role, cylinder: cylinder)
+        case .standardGases:
+            guard let m = agency.standardMixFor(depthM) else { return nil }
+            return Gas.fromPercent(id, m.0, m.1, role, cylinder: cylinder)
+        case .endDensity:
+            return nil
+        }
+    }
+
+    /// Open-circuit kit for deep-air and standard-gas agencies (mirrors GasCalculator.kt recommendAgencyKit).
+    static func recommendAgencyKit(_ depth: Double, _ general: GeneralSettings, _ dive: DiveSettings, _ env: Environment,
+                                   _ existingGases: [Gas]) -> MixRecommendation? {
+        let agency = general.gasAgency
+        let bottomCyl = resolveCylinder("best_bottom", .bottom, 2, existingGases)
+        guard let bottom = agencyBottomGas(depth, general, dive, env, "best_bottom", .bottom, bottomCyl) else { return nil }
+
+        func stage(_ id: String, _ switchM: Double, _ standardPct: Int, _ standardMinPpO2: Double, _ lowPct: Int, _ highPct: Int) -> Gas {
+            let pct = dive.ppO2Deco >= standardMinPpO2 ? standardPct
+                : Int(((dive.ppO2Deco / UnitsAndPressure.ambientPressure(switchM, env)) * 100.0).rounded(.down)).coerceIn(lowPct, highPct)
+            return Gas.fromPercent(id, pct, 0, .deco, modOverrideM: switchM, cylinder: resolveCylinder(id, .deco, 1, existingGases))
+        }
+        let s21 = stage("best_deco_21m_ean50", 21.0, 50, 1.56, 32, 50)
+        let s6 = stage("best_deco_6m_o2", 6.0, 100, 1.58, 50, 100)
+        let d21: Gas? = (depth > 21.0 && bottom.o2Pct < s21.o2Pct) ? s21 : nil
+        let d6: Gas? = (depth > 6.0 && bottom.o2Pct < s6.o2Pct) ? s6 : nil
+        let decoGases = [d21, d6].compactMap { $0 }
+
+        let travelCyl = resolveCylinder("best_travel", .travel, 1, existingGases)
+        let hypoxicBottom = minDepthM(bottom, dive.ppO2Min, env) > 0.0
+        let travel: Gas? = hypoxicBottom ? Gas.fromPercent("best_travel", 21, 35, .travel, cylinder: travelCyl) : nil
+        let travelNote: String
+        if let t = travel {
+            travelNote = "0 m → \(kRound(min(depth - 3.0, modDisplayM(t, dive.ppO2Bottom, env)))) m (21/35 travel, hypoxic bottom mix)"
+        } else {
+            travelNote = "0 m → \(kRound(depth)) m (bottom mix breathable from surface)"
+        }
+        let method = agency.method == .deepAir ? "air / nitrox to \(kRound(agency.airLimitM ?? 0)) m" : "standard gases"
+        let note = "\(agency.label) method (\(method)): bottom \(bottom.displayName)" +
+            (travel.map { " · travel \($0.displayName)" } ?? "") +
+            decoGases.map { " · \($0.displayName) @ \(kRound($0.modOverrideM ?? 0)) m" }.joined() + "."
+        var display = bottom
+        display.id = "best_travel_same"; display.role = .travel; display.cylinder = travelCyl
+        let m = gasMetrics(bottom, depth, env, dive)
+        return MixRecommendation(
+            bottomGas: bottom, travelGas: travel, travelGasDisplay: travel ?? display, travelRangeNote: travelNote,
+            deco6mO2: d6, deco21mEan50: d21, deepDecoGas: nil, decoGases: decoGases,
+            plannerGases: [travel, bottom].compactMap { $0 } + decoGases,
+            modM: m.modM, minDepthM: m.minDepthM, endAtMaxDepthM: m.endM, densityAtMaxDepthGL: m.densityGL,
+            ppO2AtMaxDepth: m.ppO2, notes: [note])
+    }
+
     static func cylinderFor(_ slotId: String, _ role: GasRole, _ existingGases: [Gas], _ def: CylinderConfig) -> CylinderConfig {
         existingGases.first { $0.id == slotId }?.cylinder ?? existingGases.first { $0.role == role }?.cylinder ?? def
     }
@@ -355,6 +436,7 @@ public enum GasCalculator {
                                                      ppN2Limit: dive.ppN2Max, role: .bailout, general: general, dive: dive, env: env,
                                                      minO2: 0.08, maxO2: 0.40, cylinder: bbCyl)
         if general.standardMixesOnly, let snapped = snapToStandard(bottomBailout, depth, env, dive) { bottomBailout = snapped }
+        if let ag = agencyBottomGas(depth, general, dive, env, "best_bailout_bottom", .bailout, bbCyl) { bottomBailout = ag }
 
         // 3. Deep bailout stage (> 54 m with helium), ICD-checked against the bottom bailout
         var deepBailout: Gas? = nil

@@ -331,7 +331,19 @@ public enum OxygenAndConsumption {
                 }
             }
 
-            if seg.densityGL > 6.2 + 0.02 && !critDensity {
+            // Deep-air agencies (TDI, RAID, IANTD, PADI): air or nitrox within the agency air limit is a trained
+            // practice, so density above 6.2 g/L is HIGH (not CRITICAL) and narcosis is a MEDIUM advisory.
+            let airLimit = input.general.gasAgency.airLimitM
+            let deepAirOk = airLimit != nil && !seg.isCcr && seg.gas.he < 0.005 && max(seg.fromDepthM, seg.toDepthM) <= airLimit! + 0.5
+            if deepAirOk && seg.densityGL > 6.2 + 0.02 && !critDensity && !highDensity {
+                highDensity = true
+                list.append(PlanAlert(.high, .DENSITY_HIGH, "Gas density \(fmt(seg.densityGL, 2)) g/L on \(seg.gas.displayName): within \(input.general.gasAgency.label) deep-air standards (air to \(kRound(airLimit!)) m) but above the 6.2 g/L research maximum. CO₂ retention risk rises with exertion.", idx))
+            } else if deepAirOk {
+                if !highDensity && seg.densityGL > dive.maxGasDensityGL + 0.05 && seg.densityGL <= 6.22 {
+                    highDensity = true
+                    list.append(PlanAlert(.high, .DENSITY_HIGH, "Gas density \(fmt(seg.densityGL, 2)) g/L on \(seg.gas.displayName) exceeds your \(fmt(dive.maxGasDensityGL, 1)) g/L target.", idx))
+                }
+            } else if seg.densityGL > 6.2 + 0.02 && !critDensity {
                 critDensity = true
                 list.append(PlanAlert(.critical, .DENSITY_HIGH, "Gas density \(fmt(seg.densityGL, 2)) g/L on \(seg.gas.displayName) exceeds 6.2 g/L UHMS maximum limit — severe CO₂ retention & hypercapnia risk.", idx))
             } else if !critDensity && seg.densityGL > dive.maxGasDensityGL + 0.05 && !highDensity {
@@ -342,7 +354,12 @@ public enum OxygenAndConsumption {
                 list.append(PlanAlert(.medium, .DENSITY_HIGH, "Gas density \(fmt(seg.densityGL, 2)) g/L on \(seg.gas.displayName) exceeds 5.2 g/L UHMS ideal work-of-breathing guideline.", idx))
             }
 
-            if !critEnd && (seg.endM > 45.0 || seg.ppN2End > 4.50) {
+            if deepAirOk {
+                if !medEnd && !highEnd && !critEnd && (seg.endM > dive.maxEndM + 1.0 || seg.ppN2End > dive.ppN2Max + 0.08) {
+                    medEnd = true
+                    list.append(PlanAlert(.medium, .END_HIGH, "Deep air narcosis on \(seg.gas.displayName): END \(kRound(seg.endM)) m, ppN₂ \(fmt(seg.ppN2End, 2)) bar (within \(input.general.gasAgency.label) air limit \(kRound(airLimit!)) m). Keep task loading low.", idx))
+                }
+            } else if !critEnd && (seg.endM > 45.0 || seg.ppN2End > 4.50) {
                 critEnd = true
                 list.append(PlanAlert(.critical, .END_HIGH, "Severe narcosis on \(seg.gas.displayName): END \(kRound(seg.endM)) m (> 45 m), ppN₂ \(fmt(seg.ppN2End, 2)) bar — helium (Trimix) required.", idx))
             } else if !critEnd && !highEnd && (seg.endM > 40.0 || seg.ppN2End > 4.20) {

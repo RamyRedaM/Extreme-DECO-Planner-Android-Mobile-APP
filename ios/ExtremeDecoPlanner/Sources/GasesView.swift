@@ -30,7 +30,7 @@ struct GasesView: View {
                 ForEach(GasSelectionMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }.pickerStyle(.segmented)
             Text(store.input.general.gasSelectionMode == .bestGasMix
-                 ? "The planner picks bottom, travel and deco mixes for the deepest level and resizes cylinders to the plan."
+                 ? "The planner picks bottom, travel and deco mixes for the deepest level (method: \(store.input.general.gasAgency.label), see Settings) and resizes cylinders to the plan."
                  : "You choose every gas and cylinder. Editing a mix in Best mode switches here automatically.")
                 .font(.caption).foregroundStyle(.secondary)
         }

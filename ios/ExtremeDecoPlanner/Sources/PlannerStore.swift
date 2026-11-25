@@ -179,7 +179,7 @@ final class PlannerStore: ObservableObject {
         input.general.gasSelectionMode = .bestGasMix
         bestMixRec = rec
         show(rec.isRecreational
-             ? "REC Dive (Within NDL): Best GAS Mix \(rec.bottomGas.displayName) (Air / Nitrox only)"
+             ? "REC Dive (Within NDL): Best GAS Mix \(rec.bottomGas.displayName)" + (rec.bottomGas.hePct > 0 ? " (\(input.general.gasAgency.label) standard gas)" : " (Air / Nitrox only)")
              : rec.bailoutBottomGas != nil
              ? "CCR Best GAS Mix: diluent \(rec.bottomGas.displayName) · bailout " + ([rec.bailoutBottomGas!] + rec.decoGases).map(\.displayName).joined(separator: " · ")
              : "Best GAS Mix active: 6m \(rec.deco6mO2?.displayName ?? "O2") · 21m \(rec.deco21mEan50?.displayName ?? "EAN50") · Travel \(rec.travelGasDisplay.displayName) · MOD \(rec.bottomGas.displayName)")

@@ -169,6 +169,80 @@ public struct DiveLevel: Codable, Hashable, Identifiable {
     }
 }
 
+/// How an agency picks the bottom gas for Best GAS Mix.
+public enum GasMethod: String, Codable, Hashable { case endDensity, deepAir, standardGases }
+
+/// Diving agency whose gas-selection method Best GAS Mix follows (mirrors GasAgency in Models.kt).
+public enum GasAgency: String, Codable, CaseIterable, Hashable, Identifiable {
+    case optimized = "OPTIMIZED", tdi = "TDI", raid = "RAID", iantd = "IANTD", padi = "PADI"
+    case gue = "GUE", utd = "UTD", bsac = "BSAC", naui = "NAUI", ssi = "SSI"
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .optimized: return "Optimized (your limits)"
+        case .tdi: return "TDI"
+        case .raid: return "RAID"
+        case .iantd: return "IANTD"
+        case .padi: return "PADI TecRec"
+        case .gue: return "GUE"
+        case .utd: return "UTD"
+        case .bsac: return "BSAC"
+        case .naui: return "NAUI Tec"
+        case .ssi: return "SSI"
+        }
+    }
+
+    public var method: GasMethod {
+        switch self {
+        case .tdi, .raid, .iantd, .padi: return .deepAir
+        case .gue, .utd: return .standardGases
+        default: return .endDensity
+        }
+    }
+
+    public var description: String {
+        switch self {
+        case .optimized: return "Mix calculated from your ppO₂, Max END and density limits, with travel gas and a deep deco stage when needed."
+        case .tdi: return "TDI Extended Range: air bottom gas to 55 m with EAN50 and O₂ deco. Trimix beyond 55 m."
+        case .raid: return "RAID Extended Decompression: air to 55 m with EAN50 and O₂ deco. Trimix beyond 55 m."
+        case .iantd: return "IANTD: air to 52 m with EAN50 and O₂ deco. Trimix beyond 52 m."
+        case .padi: return "PADI Tec 50: air or nitrox to 50 m with two deco gases (EAN50, O₂). Trimix beyond 50 m."
+        case .gue: return "GUE standard gases: helium below 30 m (EAN32, 30/30, 21/35, 18/45, 15/55, 10/70), deco EAN50 and O₂. Check depth ranges with your instructor."
+        case .utd: return "UTD standard gases: helium below 30 m (EAN32, 25/25, 21/35, 18/45, 15/55, 10/70), deco EAN50 and O₂. Check depth ranges with your instructor."
+        case .bsac: return "BSAC: mix chosen for ppO₂ 1.4 bar and gas density about 5.2 g/L (BSAC gas density tables)."
+        case .naui: return "NAUI Tec: no deep air, trimix with END limited to 30 m."
+        case .ssi: return "SSI Extended Range: trimix with END limited to 30 m."
+        }
+    }
+
+    public var airLimitM: Double? {
+        switch self {
+        case .tdi, .raid: return 55.0
+        case .iantd: return 52.0
+        case .padi: return 50.0
+        default: return nil
+        }
+    }
+
+    public var endMaxM: Double? { (self == .naui || self == .ssi) ? 30.0 : nil }
+    public var densityMaxGL: Double? { self == .bsac ? 5.2 : nil }
+
+    /// (max depth, O2 %, He %) rows for standard-gas agencies.
+    public var standardTable: [(Double, Int, Int)] {
+        switch self {
+        case .gue: return [(30.0, 32, 0), (36.0, 30, 30), (48.0, 21, 35), (60.0, 18, 45), (75.0, 15, 55), (999.0, 10, 70)]
+        case .utd: return [(30.0, 32, 0), (40.0, 25, 25), (48.0, 21, 35), (60.0, 18, 45), (75.0, 15, 55), (999.0, 10, 70)]
+        default: return []
+        }
+    }
+
+    public func standardMixFor(_ depthM: Double) -> (Int, Int)? {
+        standardTable.first { depthM <= $0.0 + 1e-6 }.map { ($0.1, $0.2) }
+    }
+}
+
 public struct GeneralSettings: Codable, Hashable {
     public var planningType: PlanningType = .openCircuit
     public var units: UnitSystem = .metric
@@ -187,6 +261,13 @@ public struct GeneralSettings: Codable, Hashable {
     public var btIncludesDescent: Bool = true
     public var standardMixesOnly: Bool = false
     public var gasSelectionMode: GasSelectionMode = .bestGasMix
+    /// Stored optionally so plans saved before this setting existed still load (nil = Optimized).
+    public var gasAgencyStored: GasAgency? = nil
+    /// Diving agency whose gas-selection method Best GAS Mix follows.
+    public var gasAgency: GasAgency {
+        get { gasAgencyStored ?? .optimized }
+        set { gasAgencyStored = newValue }
+    }
 
     public init() {}
 

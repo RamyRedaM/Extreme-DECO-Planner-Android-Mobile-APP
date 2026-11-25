@@ -46,6 +46,10 @@ struct SettingsView: View {
             if g.decoModel == .vpmB {
                 StepperRow(label: "VPM-B conservatism", value: g.vpmConservatism, range: 0...5) { v in store.updateGeneral { $0.vpmConservatism = v } }
             }
+            Picker("Diving agency (Best GAS Mix)", selection: Binding(get: { g.gasAgency }, set: { v in store.updateGeneral { $0.gasAgency = v } })) {
+                ForEach(GasAgency.allCases) { Text($0.label).tag($0) }
+            }
+            Text(g.gasAgency.description).font(.caption).foregroundStyle(.secondary)
             StepperRow(label: "GF Low", value: g.gfLow, range: 5...100, step: 5, suffix: "%") { v in store.updateGeneral { $0.gfLow = v } }
             StepperRow(label: "GF High", value: g.gfHigh, range: g.gfLow...100, step: 5, suffix: "%") { v in store.updateGeneral { $0.gfHigh = v } }
             HStack {

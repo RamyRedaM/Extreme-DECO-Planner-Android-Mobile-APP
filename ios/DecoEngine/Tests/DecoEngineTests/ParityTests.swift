@@ -23,6 +23,9 @@ final class ParityTests: XCTestCase {
         "S11": "96.00|62.00|30|30:1.00:TX 15/55,27:1.00:TX 15/55,24:2.00:TX 15/55,21:3.00:TX 15/55,18:3.00:TX 15/55,15:4.00:TX 15/55,12:7.00:TX 15/55,9:8.00:TX 15/55,6:13.00:TX 15/55,3:20.00:TX 15/55|52.00|139.04|68.3|TX 15/55=468/600|CRITICAL:CCR_BAILOUT_RISK,HIGH:DENSITY_HIGH,MEDIUM:LONG_TTS_EXPOSURE,LOW:CNS",
         "S11bo": "100.00|64.00|30|30:1.00:TX 18/45,27:2.00:TX 18/45,24:3.00:TX 18/45,21:2.00:EAN50,18:3.00:EAN50,15:4.00:EAN50,12:5.00:EAN50,9:10.00:EAN50,6:12.00:O2 100%,3:22.00:O2 100%|79.93|96.93|67.3|TX 18/45=1871/4400,EAN50=1958/2200,O2 100%=1656/1400|CRITICAL:GAS_VOLUME,HIGH:NO_O2_BREAKS,MEDIUM:ICD_FIFTHS,MEDIUM:LONG_TTS_EXPOSURE,LOW:CNS",
         "BMCCR": "DILUENT:TX 15/50:1,BAILOUT:TX 19/51:1,BAILOUT:TX 32/35:1,BAILOUT:EAN50:1,BAILOUT:O2 100%:1",
+        "S12": "51.78|25.00|27|21:1.00:EAN50,18:1.00:EAN50,15:2.00:EAN50,12:3.00:EAN50,9:4.00:EAN50,6:5.00:O2 100%,3:9.00:O2 100%|40.49|74.17|63.4|Air=4178/4800,EAN50=655/2400,O2 100%=476/2400|HIGH:DENSITY_HIGH,MEDIUM:END_HIGH",
+        "S13": "82.44|54.00|42|54:1.00:TX 21/35,30:1.00:TX 21/35,27:2.00:TX 21/35,24:2.00:TX 21/35,21:2.00:EAN50,18:2.00:EAN50,15:3.00:EAN50,12:5.00:EAN50,9:7.00:EAN50,6:10.00:O2 100%,3:19.00:O2 100%|64.96|110.55|66.7|TX 21/35=1337/2400,TX 15/55=4379/4800,EAN50=1060/2400,O2 100%=945/2400|HIGH:DENSITY_HIGH,HIGH:ICD_N2,HIGH:NO_O2_BREAKS,MEDIUM:END_HIGH,MEDIUM:ICD_FIFTHS,MEDIUM:LONG_TTS_EXPOSURE,LOW:CNS",
+        "BMAG": "TDI@50=BOTTOM:Air,DECO:EAN50,DECO:O2 100%;IANTD@53=TRAVEL:TX 34/10,BOTTOM:TX 21/43,DECO:EAN50,DECO:O2 100%;GUE@70=TRAVEL:TX 21/35,BOTTOM:TX 15/55,DECO:EAN50,DECO:O2 100%;UTD@38=BOTTOM:TX 25/25,DECO:EAN50,DECO:O2 100%;BSAC@60=TRAVEL:TX 28/23,BOTTOM:TX 19/51,DECO:TX 32/35,DECO:EAN50,DECO:O2 100%;NAUI@50=TRAVEL:TX 34/10,BOTTOM:TX 23/40,DECO:EAN50,DECO:O2 100%;SSI@45=TRAVEL:TX 34/10,BOTTOM:TX 25/33,DECO:EAN50,DECO:O2 100%",
         "S9b": "28.44|0.00|0||86.53|41.12|52.0|EAN39=2764/4800|HIGH:CNS,HIGH:SHORT_SURFACE_INTERVAL"
     ]
 
@@ -92,6 +95,13 @@ final class ParityTests: XCTestCase {
                                                    [DiveLevel("a", 75, 15), DiveLevel("b", 50, 10)]))
         out.append(("S11", s11))
         out.append(("S11bo", DivePlannerEngine.ccrBailoutAnalysis(s11.input, s11.segments, s11.levelEnds)!.worst!))
+
+        // S12: TDI deep air 55 m / 20 min, S13: GUE 70 m / 20 min standard gases
+        for (id, agency, depth) in [("S12", GasAgency.tdi, 55.0), ("S13", GasAgency.gue, 70.0)] {
+            var ga = GeneralSettings(); ga.gasAgency = agency
+            let r = GasCalculator.recommendBestMix(maxDepthM: depth, general: ga, dive: DiveSettings())
+            out.append((id, DivePlannerEngine.planDive(input(ga, r.plannerGases, [DiveLevel("a", depth, 20)]))))
+        }
         return out
     }
 
@@ -143,6 +153,14 @@ final class ParityTests: XCTestCase {
         let ccrLine = s10.input.gases.map { "\($0.role.rawValue.uppercased()):\($0.displayName):\($0.cylinder.count)" }.joined(separator: ",")
         print("DIAG SWIFT PARITY|BMCCR|" + ccrLine)
         XCTAssertEqual(ccrLine, Self.kotlinReference["BMCCR"])
+        let pairs: [(GasAgency, Double)] = [(.tdi, 50), (.iantd, 53), (.gue, 70), (.utd, 38), (.bsac, 60), (.naui, 50), (.ssi, 45)]
+        let agLine = pairs.map { (a, d) -> String in
+            var g = GeneralSettings(); g.gasAgency = a
+            return a.rawValue + "@" + String(Int(d)) + "=" + GasCalculator.recommendBestMix(maxDepthM: d, general: g, dive: DiveSettings())
+                .plannerGases.map { "\($0.role.rawValue.uppercased()):\($0.displayName)" }.joined(separator: ",")
+        }.joined(separator: ";")
+        print("DIAG SWIFT PARITY|BMAG|" + agLine)
+        XCTAssertEqual(agLine, Self.kotlinReference["BMAG"])
         let s2 = Self.scenarios().first { $0.0 == "S2" }!.1
         let si = TissuesAndBuhlmann.estimateSurfaceInterval(endTissues: s2.endTissues, endCnsPct: s2.oxygen.endCnsPct, surfaceIntervalMin: 60,
                                                             env: s2.env, nextDiveDepthM: 25, nextDiveGas: Gas.fromPercent("x", 32, 0, .bottom),
