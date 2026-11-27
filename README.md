@@ -28,6 +28,7 @@
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
   <img alt="Version" src="https://img.shields.io/badge/version-1.27.2-0891B2">
   <img alt="Status" src="https://img.shields.io/badge/status-beta-FACC15">
+  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
   <img alt="iOS" src="https://img.shields.io/badge/platform-iOS%2016%2B-000000?logo=apple&logoColor=white">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white">
   <img alt="Model" src="https://img.shields.io/badge/model-B%C3%BChlmann%20ZHL--16%20%2B%20GF-0E7490">
@@ -47,7 +48,7 @@
 | | |
 |---|---|
 | 🔬 **Published science only** | Bühlmann ZHL-16A / B / C, Baker's Gradient Factors, NOAA oxygen limits, Lambertsen's OTU, Anthony & Mitchell's gas density limits, Doolette & Mitchell's ICD work. Every formula is written out in [The Science Behind the Planner](#the-science-behind-the-planner), with its source. |
-| 📖 **Open code** | The whole calculation engine is in this repository, in plain Kotlin and Swift with no hidden server. Anyone can read how a stop, a CNS value or a gas volume is calculated. |
+| 📖 **Open source (GPL-3.0)** | The whole calculation engine is in this repository, in plain Kotlin and Swift with no hidden server. Anyone can read how a stop, a CNS value or a gas volume is calculated. |
 | 🔁 **Two independent implementations** | The Android engine (Kotlin) and the iPhone engine (Swift) are separate code bases. On every build they must give the same stops, runtime, CNS, OTU, gas volumes and alerts on 16 reference dives, or the build fails. |
 | ✅ **About 100 automated tests** | Golden decompression schedules, physics checks (Haldane, Schreiner, GF, MOD, END, density), CNS and OTU, CCR bailout, multi-dive days, and gas selection for every diving agency option. They run on every build. |
 | ⚠️ **Honest limits** | What the app does not do is written down: VPM-B is approximate and marked experimental, Bühlmann does not model bubbles, and every plan must be cross-checked with a second planner. See [Known Limitations](#known-limitations). |
@@ -1019,6 +1020,8 @@ Bug reports, test cases and independent validation of the engine are very welcom
 
 Any change that alters a decompression result must include before-and-after schedules and a comparison with at least one other planner.
 
+By contributing, you agree that your contribution is licensed under the [GPL-3.0](LICENSE), like the rest of the project.
+
 ---
 
 ## References
@@ -1076,9 +1079,22 @@ For proposals and feedback: **RamyRedaM@gmail.com**, or open an issue on this re
 
 ## License
 
-Copyright © 2026 Ramy Reda. All rights reserved.
+Extreme DECO Planner is **free and open source software**, licensed under the **[GNU General Public License v3.0](LICENSE)** (GPL-3.0).
 
-The author accepts no liability for any injury or loss arising from the use of this software. See the warning at the top of this file.
+Copyright © 2026 Ramy Reda.
+
+In plain words (the [LICENSE](LICENSE) file is the legal text):
+
+| You may | On these conditions |
+|---|---|
+| Use the app and the code for any purpose, including commercially | Keep the copyright and licence notices |
+| Read, study and verify every calculation | |
+| Modify the code and fix or improve the engine | Mark your changes clearly |
+| Share the app or your modified version | Release your version's full source code under GPL-3.0 too |
+
+The GPL keeps the decompression engine open: anyone who distributes a changed version must publish their changes, so every modification to the maths stays open to review by the diving community.
+
+**No warranty.** As the GPL states, this software is provided "as is", without warranty of any kind. The author accepts no liability for any injury or loss arising from its use. See the warning at the top of this file.
 
 ---
 
