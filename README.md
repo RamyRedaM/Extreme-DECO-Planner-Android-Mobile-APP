@@ -5,7 +5,7 @@
 <h1 align="center">Extreme DECO Planner</h1>
 
 <p align="center">
-  <strong>A technical scuba diving decompression planner for Android and iPhone.</strong><br>
+  <strong>A technical scuba diving decompression planner for Android and Apple devices.</strong><br>
   Bühlmann ZHL-16A / B / C with Gradient Factors, Best Gas Mix selection, CCR with bailout, multi-dive days, interactive charts and PDF / CSV export. Everything runs on the phone, offline.
 </p>
 
