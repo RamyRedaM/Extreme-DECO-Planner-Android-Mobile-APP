@@ -28,18 +28,35 @@
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white">
   <img alt="Version" src="https://img.shields.io/badge/version-1.27.2-0891B2">
   <img alt="Status" src="https://img.shields.io/badge/status-beta-FACC15">
+  <img alt="iOS" src="https://img.shields.io/badge/platform-iOS%2016%2B-000000?logo=apple&logoColor=white">
+  <img alt="Swift" src="https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white">
+  <img alt="Model" src="https://img.shields.io/badge/model-B%C3%BChlmann%20ZHL--16%20%2B%20GF-0E7490">
   <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml"><img alt="Build APK" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml/badge.svg"></a>
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml"><img alt="Build iOS" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml/badge.svg"></a>
 </p>
 
 ---
 
 > [!WARNING]
-> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this app.** Every Experienced TEC diver knows very well that all the dive algos are trial/error algos and there is NO Mathematical Model on earth that can truely and 100% model the human body and how it will react to different depths with different gases , so Extreme DECO Planner is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Dive within your training limits, cross-check every plan with a second independent planner, and carry backup tables. You use this software at your own risk.
+> **There is always a risk of decompression sickness (DCS), oxygen toxicity and other injury on any dive, even when you follow a plan produced by this app.** Every experienced TEC diver knows that all decompression algorithms are calibrated by trial and error, and that NO mathematical model on earth can truly and 100% model the human body and how it will react to different depths with different gases. So Extreme DECO Planner is for training and planning only. It does not replace technical diver training, certification, a dive computer or your own judgement. Dive within your training limits, cross-check every plan with a second independent planner, and carry backup tables. You use this software at your own risk.
+
+---
+
+## Why Expert Divers Can Trust the Numbers
+
+| | |
+|---|---|
+| 🔬 **Published science only** | Bühlmann ZHL-16A / B / C, Baker's Gradient Factors, NOAA oxygen limits, Lambertsen's OTU, Anthony & Mitchell's gas density limits, Doolette & Mitchell's ICD work. Every formula is written out in [The Science Behind the Planner](#the-science-behind-the-planner), with its source. |
+| 📖 **Open code** | The whole calculation engine is in this repository, in plain Kotlin and Swift with no hidden server. Anyone can read how a stop, a CNS value or a gas volume is calculated. |
+| 🔁 **Two independent implementations** | The Android engine (Kotlin) and the iPhone engine (Swift) are separate code bases. On every build they must give the same stops, runtime, CNS, OTU, gas volumes and alerts on 16 reference dives, or the build fails. |
+| ✅ **About 100 automated tests** | Golden decompression schedules, physics checks (Haldane, Schreiner, GF, MOD, END, density), CNS and OTU, CCR bailout, multi-dive days, and gas selection for every diving agency option. They run on every build. |
+| ⚠️ **Honest limits** | What the app does not do is written down: VPM-B is approximate and marked experimental, Bühlmann does not model bubbles, and every plan must be cross-checked with a second planner. See [Known Limitations](#known-limitations). |
 
 ---
 
 ## Table of Contents
 
+- [Why Expert Divers Can Trust the Numbers](#why-expert-divers-can-trust-the-numbers)
 - [Overview](#overview)
 - [Download](#download)
 - [iPhone (iOS)](#iphone-ios)
@@ -47,14 +64,14 @@
 - [App Screens](#app-screens)
 - [Screenshots](#screenshots)
 - [How to Plan a Dive](#how-to-plan-a-dive)
-- [Decompression Models](#decompression-models)
+- [The Science Behind the Planner](#the-science-behind-the-planner)
 - [Best Gas Mix](#best-gas-mix)
 - [Surface Interval Calculator](#surface-interval-calculator)
 - [Safety Alerts](#safety-alerts)
 - [Build from Source](#build-from-source)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Testing and Validation](#testing-and-validation)
+- [Verification](#verification)
 - [Default Settings](#default-settings)
 - [Known Limitations](#known-limitations)
 - [Roadmap](#roadmap)
@@ -67,7 +84,7 @@
 
 ## Overview
 
-Extreme DECO Planner helps technical divers plan open circuit and closed circuit (CCR) decompression dives on an Android phone. You set the depth, bottom time, gases and your limits, and the app:
+Extreme DECO Planner helps technical divers plan open circuit and closed circuit (CCR) decompression dives on an Android phone or an iPhone. You set the depth, bottom time, gases and your limits, and the app:
 
 1. Recommends the **best bottom, travel and deco gases** for the depth, with cylinder sizes.
 2. Builds a full **decompression schedule** with the model you choose.
@@ -102,7 +119,7 @@ You can also [build the app from source](#build-from-source).
 
 ## iPhone (iOS)
 
-The iPhone version is a native SwiftUI app in [`ios/`](ios/), with the same four tabs and features as Android. It is a separate code base: the Swift engine is a line-by-line port of the Kotlin engine, and parity tests check on every build that both engines give the same schedules, CNS, OTU, gas figures and alerts. See [ios/README.md](ios/README.md) for how the two code bases are kept in step.
+The iPhone version is a native SwiftUI app in [`ios/`](ios/), with the same four tabs and features as Android. It is a separate code base: the Swift engine is a line-by-line port of the Kotlin engine, and parity tests check on every build that both engines give the same schedules, CNS, OTU, gas figures and alerts. See [Verification](#verification) for how the two code bases are kept in step.
 
 **Test build: [Extreme-DECO-Planner-v1.27.2-unsigned.ipa](https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/releases/download/v1.27.2/Extreme-DECO-Planner-v1.27.2-unsigned.ipa)** (iOS 16 or later)
 
@@ -252,59 +269,386 @@ See the [Screenshots](#screenshots) section for every screen.
 
 ### Example
 
-40 m for 20 min on air, ZHL-16C, GF 20/80, salt water, deco on EAN50 and oxygen:
+40 m for 20 min on air (2 × 12 L), ZHL-16C, GF 20/80, salt water, deco on EAN50 and oxygen. This is reference dive S1 of the test suite, so these are the exact numbers both apps produce:
 
-| Depth (m) | Stop (min) | Gas |
-|---|---|---|
-| 18 | 1 | EAN50 |
-| 12 | 1 | EAN50 |
-| 9 | 1 | EAN50 |
-| 6 | 3 | Oxygen |
-| 3 | 4 | Oxygen |
+| Depth (m) | Stop (min) | Gas | Note |
+|---|---|---|---|
+| 21 | 1 | EAN50 | Gas switch |
+| 9 | 2 | EAN50 | |
+| 6 | 2 | Oxygen | Gas switch |
+| 3 | 3 | Oxygen | |
 
-Total runtime about 35 minutes. Planners round stops and handle gas switches differently, so expect differences of about one minute per stop from other planners.
+Runtime 33 min, 8 min of deco, end CNS 19%, 38 OTU, Surface GF 75%. Gas use: air 3108 L of 4800 L, EAN50 266 L, oxygen 195 L (all including reserves). Alerts: CRITICAL gas density (air at 40 m is 6.4 g/L) and MEDIUM END. These are the same points a careful instructor would raise about a 40 m air dive.
+
+Planners round stops and handle gas switches differently, so expect differences of about one minute per stop from other planners.
 
 ---
 
-## Decompression Models
+## The Science Behind the Planner
 
-### Bühlmann ZHL-16
+Every number the app shows comes from a published model, a physical law or a documented convention. This chapter explains each one: the theory, the exact formula the code uses, the default values and where they come from. The numbers in brackets, like [1], point to the [References](#references).
 
-The model tracks nitrogen and helium in 16 tissue compartments, with half-times from 4 to 635 minutes for nitrogen and 1.51 to 240.03 minutes for helium.
+> [!IMPORTANT]
+> Decompression models are not physiology. They are mathematical models calibrated against human dive trials and field experience. They predict *acceptable risk*, not safety. The app implements the models faithfully, but no model can guarantee that you will not get bent. That is why every plan must be cross-checked and dived within your training.
 
-| Variant | Use |
-|---|---|
-| ZHL-16A | Original experimental coefficients |
-| ZHL-16B | More conservative middle compartments, designed for printed tables |
-| ZHL-16C | Most conservative middle compartments, the standard for dive computers (recommended) |
+### At a glance
 
-The three variants differ only in the nitrogen `a` coefficients.
+| Area | Model or law used | Key sources |
+|---|---|---|
+| Pressure at depth | Hydrostatic pressure, salinity, International Standard Atmosphere for altitude | ISO 2533 [16], EN 13319 [17] |
+| Gas in the lungs | Dalton's law, alveolar water vapour 0.0627 bar | Bühlmann [1] |
+| Gas in the tissues | Haldane exponential (constant depth), Schreiner equation (changing depth) | Boycott, Damant & Haldane [4], Schreiner & Kelley [5], Hamilton & Thalmann [3] |
+| Limit of supersaturation | Bühlmann ZHL-16A / B / C M-values, helium-nitrogen weighting | Workman [6], Bühlmann [1, 2] |
+| Conservatism | Gradient Factors | Baker [7, 8] |
+| Bubble model (experimental) | Simplified VPM-B | Yount & Hoffman [9], Baker [10] |
+| CNS oxygen toxicity | NOAA single-exposure limits, 90-min recovery half-time | NOAA [11], Baker [12] |
+| Pulmonary oxygen toxicity | OTU / UPTD, REPEX daily limits | Lambertsen [13], Hamilton et al. [14] |
+| Narcosis | END with oxygen counted as narcotic (optional) | Agency practice [19] |
+| Work of breathing | Gas density limits 5.2 / 6.2 g/L | Anthony & Mitchell [15] |
+| Gas switches | Isobaric counterdiffusion (ICD), ΔppN2 ≤ 0.5 bar, Rule of Fifths | Lambertsen & Idicula [20], Doolette & Mitchell [21], Burton [22] |
+| Gas supply | Boyle's and Gay-Lussac's laws, rule of thirds, rock-bottom | Exley [23], technical agency practice |
 
-Tissue loading at constant depth (Haldane):
+---
 
+### 1. Pressure: where every calculation starts
+
+**Theory.** Water pressure grows linearly with depth (hydrostatic pressure). The air pressure at the surface falls with altitude. All gas partial pressures, tissue loadings and gas volumes are calculated from the absolute (ambient) pressure.
+
+```math
+P_{amb}(d) = P_{surf} + d \cdot \frac{\rho \, g}{10^5} \qquad [\text{bar}]
 ```
-P(t) = P0 + (Pi − P0) × (1 − e^(−k·t)),   k = ln 2 / half-time
+
+| Symbol | Meaning | Value in the app |
+|---|---|---|
+| ρ | Water density | Fresh 1000, EN 13319 1020, Salt 1030, Red Sea 1020 to 1040 (editable), or custom kg/m³ |
+| g | Standard gravity | 9.80665 m/s² |
+| P_surf | Surface pressure | 1.01325 bar at sea level, lower at altitude |
+
+**Altitude** uses the International Standard Atmosphere barometric formula [16]:
+
+```math
+P_{surf}(h) = 1.01325 \times (1 - 2.25577 \times 10^{-5} \cdot h)^{5.25588}
 ```
 
-Tissue loading while changing depth (Schreiner):
+At 1500 m this gives 0.846 bar, so a 30 m dive in a mountain lake is a deeper dive for your tissues than 30 m in the sea. If you arrived at altitude less than 12 hours ago, the app starts your tissues saturated at **sea-level** pressure, because they have not yet off-gassed to the lower surface pressure.
 
-```
-P(t) = Pi0 + R·(t − 1/k) − (Pi0 − P0 − R/k) × e^(−k·t)
-```
+**Dalton's law** gives the partial pressure of each gas. In the lungs the gas is saturated with water vapour, which takes up 0.0627 bar (Bühlmann's value at 37 °C [1]):
 
-### Gradient Factors
-
-Gradient Factors set how close each tissue may come to its Bühlmann M-value:
-
-```
-Tolerated ambient pressure = (P_tissue − a × GF) / (GF / b + 1 − GF)
+```math
+P_{O_2} = P_{amb} \cdot f_{O_2} \qquad P_{i,N_2} = (P_{amb} - 0.0627) \cdot f_{N_2} \qquad P_{i,He} = (P_{amb} - 0.0627) \cdot f_{He}
 ```
 
-- **GF Low** controls the first stop. Lower values give a deeper first stop.
-- **GF High** controls surfacing. Lower values give longer shallow stops.
-- GF moves in a straight line from GF Low at the first stop to GF High at the surface.
-- GF 100/100 is pure Bühlmann.
+On **CCR**, the loop holds oxygen at the setpoint, and the diluent's nitrogen and helium share the rest:
 
+```math
+P_{O_2} = \min\big(\max(SP,\ P_{amb} f_{O_2,dil}),\ P_{amb} - 0.0627\big) \qquad P_{i,inert} = P_{amb} - 0.0627 - P_{O_2}
+```
+
+Nitrogen and helium are split in the same ratio as in the diluent. Setpoints default to 0.7 bar on the descent, 1.3 bar from 20 m, and 1.3 bar for deco.
+
+---
+
+### 2. How tissues take up and release gas
+
+**Theory.** In 1908, Boycott, Damant and Haldane [4] showed that the body can be modelled as a set of theoretical tissue *compartments*, each taking up inert gas exponentially with its own **half-time**: the time to go halfway to equilibrium with the gas breathed. A fast compartment (4 min) behaves like blood-rich tissue; a slow one (635 min) like fat or bone. These compartments are mathematical, not anatomical.
+
+**At constant depth (Haldane equation):**
+
+```math
+P_t = P_0 + (P_i - P_0)\,(1 - e^{-k t}), \qquad k = \frac{\ln 2}{t_{1/2}}
+```
+
+**While changing depth (Schreiner equation [5]),** where the inspired pressure changes at a constant rate R (bar/min) during a descent or ascent:
+
+```math
+P_t = P_{i0} + R\left(t - \frac{1}{k}\right) - \left(P_{i0} - P_0 - \frac{R}{k}\right) e^{-k t}
+```
+
+The app applies both equations separately to **nitrogen and helium** in all 16 compartments, segment by segment, so every descent, level, ascent, gas switch and stop is modelled exactly as planned.
+
+**Starting state.** Before the first dive of the day, every compartment holds nitrogen at surface equilibrium, (P_surf − 0.0627) × 0.7902, and no helium. On repetitive dives, the tissues off-gas on the surface (breathing air) with the Haldane equation for the length of the surface interval.
+
+---
+
+### 3. Bühlmann ZHL-16: how much supersaturation is tolerated
+
+**Theory.** Tissues can hold more dissolved gas than the ambient pressure (supersaturation) without symptomatic bubbles, up to a limit. Workman [6] called that limit the **M-value** and showed it rises linearly with depth. Professor Albert Bühlmann (University of Zurich) wrote it in the form used today, with two coefficients per compartment, *a* and *b*, fitted to thousands of experimental dives [1, 2]:
+
+```math
+M = \frac{P_{amb}}{b} + a \qquad\Longleftrightarrow\qquad P_{amb,tol} = (P_t - a)\cdot b
+```
+
+Bühlmann derived the original coefficients from the half-time:
+
+```math
+a = 2 \cdot t_{1/2}^{-1/3} \qquad b = 1.005 - t_{1/2}^{-1/2}
+```
+
+(for compartment 1, t½ = 4 min gives a = 1.2599, b = 0.5050, exactly the table value). The **B** and **C** variants then made the middle compartments more conservative, based on field experience: ZHL-16B for printed tables, ZHL-16C for dive computers. All three share the same half-times and b values; only the nitrogen *a* values differ.
+
+**Trimix.** When a compartment holds both gases, the app weights the coefficients by each gas's tension, as Bühlmann did for mixed-gas diving [2]:
+
+```math
+a = \frac{a_{N_2} P_{N_2} + a_{He} P_{He}}{P_{N_2} + P_{He}} \qquad b = \frac{b_{N_2} P_{N_2} + b_{He} P_{He}}{P_{N_2} + P_{He}}
+```
+
+Helium half-times are the nitrogen half-times divided by 2.65, the square root of the ratio of their molecular weights (Graham's law).
+
+<details>
+<summary><b>Full ZHL-16 coefficient table used by the app</b> (click to open)</summary>
+
+| # | N2 t½ (min) | a N2 (16A) | a N2 (16B) | a N2 (16C) | b N2 | He t½ (min) | a He | b He |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 4.0 | 1.2599 | 1.2599 | 1.2599 | 0.5050 | 1.51 | 1.7424 | 0.4245 |
+| 1b | 5.0 | 1.1696 | 1.1696 | 1.1696 | 0.5578 | 1.88 | 1.6189 | 0.4770 |
+| 2 | 8.0 | 1.0000 | 1.0000 | 1.0000 | 0.6514 | 3.02 | 1.3830 | 0.5747 |
+| 3 | 12.5 | 0.8618 | 0.8618 | 0.8618 | 0.7222 | 4.72 | 1.1919 | 0.6527 |
+| 4 | 18.5 | 0.7562 | 0.7562 | 0.7562 | 0.7825 | 6.99 | 1.0458 | 0.7223 |
+| 5 | 27.0 | 0.6667 | 0.6667 | 0.6200 | 0.8126 | 10.21 | 0.9220 | 0.7582 |
+| 6 | 38.3 | 0.5933 | 0.5600 | 0.5043 | 0.8434 | 14.48 | 0.8205 | 0.7957 |
+| 7 | 54.3 | 0.5282 | 0.4947 | 0.4410 | 0.8693 | 20.53 | 0.7305 | 0.8279 |
+| 8 | 77.0 | 0.4701 | 0.4500 | 0.4000 | 0.8910 | 29.11 | 0.6502 | 0.8553 |
+| 9 | 109.0 | 0.4187 | 0.4187 | 0.3750 | 0.9092 | 41.20 | 0.5950 | 0.8757 |
+| 10 | 146.0 | 0.3798 | 0.3798 | 0.3500 | 0.9222 | 55.19 | 0.5545 | 0.8903 |
+| 11 | 187.0 | 0.3497 | 0.3497 | 0.3295 | 0.9319 | 70.69 | 0.5333 | 0.8997 |
+| 12 | 239.0 | 0.3223 | 0.3223 | 0.3065 | 0.9403 | 90.34 | 0.5189 | 0.9073 |
+| 13 | 305.0 | 0.2971 | 0.2850 | 0.2835 | 0.9477 | 115.29 | 0.5181 | 0.9122 |
+| 14 | 390.0 | 0.2737 | 0.2737 | 0.2610 | 0.9544 | 147.42 | 0.5176 | 0.9171 |
+| 15 | 498.0 | 0.2523 | 0.2523 | 0.2480 | 0.9602 | 188.24 | 0.5172 | 0.9217 |
+| 16 | 635.0 | 0.2327 | 0.2327 | 0.2327 | 0.9653 | 240.03 | 0.5119 | 0.9267 |
+
+*a* in bar, *b* dimensionless. Compartment 1b (5 min) replaces compartment 1 when you tick **Use compartment 1b** in Settings.
+
+</details>
+
+---
+
+### 4. Gradient Factors: controlling conservatism
+
+**Theory.** Pure Bühlmann lets the leading tissue reach 100% of its M-value. Erik Baker [7] proposed limiting that to a **fraction** of the gradient between ambient pressure and the M-value. GF Low applies at the first stop and controls how deep deco starts; GF High applies at the surface and controls how long the shallow stops are. This is how most modern technical dive computers that use Bühlmann set conservatism.
+
+```math
+M_{GF} = P_{amb} + GF \cdot (M - P_{amb}) \qquad\Longrightarrow\qquad P_{amb,tol} = \frac{P_t - a \cdot GF}{\dfrac{GF}{b} + 1 - GF}
+```
+
+With GF = 1 this reduces exactly to Bühlmann's (P_t − a)·b. The GF moves in a straight line with depth, from GF Low at the first stop to GF High at the surface:
+
+```math
+GF(d) = GF_{High} + (GF_{Low} - GF_{High}) \cdot \frac{d}{d_{first\ stop}}
+```
+
+The **ceiling** is the deepest tolerated ambient pressure over all 16 compartments, converted to depth. The app also shows:
+
+| Read-out | Formula | Meaning |
+|---|---|---|
+| **GF99** | max over compartments of (P_t − P_amb) / (M − P_amb) | How close the leading tissue is to its raw M-value right now |
+| **Surface GF** | GF99 evaluated at surface pressure | What GF you would surface with if you went up now. Above 100% means a pure-Bühlmann violation |
+| **Leading compartment** | The compartment giving the highest GF99 | Which tissue controls your deco |
+
+---
+
+### 5. How the schedule is built
+
+The schedule builder (`DivePlannerEngine`) follows these steps:
+
+1. **Descent** at your descent rate (default 20 m/min), loaded with the Schreiner equation. With a travel gas, the switch to the bottom gas is made as deep as the travel gas MOD allows, rounded to a stop depth and never shallower than the bottom gas's minimum depth.
+2. **Bottom levels** loaded with Haldane. If "Bottom time includes descent" is on, the descent time is subtracted from the first level.
+3. **First stop:** the ceiling is computed at **GF Low** and rounded up to the next stop increment (3 m, or 1 m if selected). The app ascends to it at the ascent rate (default 9 m/min), switching gas on the way when a richer gas becomes usable.
+4. **Gas switches:** at each stop, the app switches to the richest enabled gas whose MOD (at your PPO2 Deco limit, or the switch depth you set) covers the stop, and adds the gas-switch time (default 1 min).
+5. **Stop solver:** at each stop, it advances the tissues minute by minute until the ceiling, at the GF interpolated for the **next** stop, is shallower than that next stop. It then refines the last minute second by second, and rounds the stop **up** to your minimum stop time (default 1 min).
+6. **Gas breaks:** if enabled, after every 20 min on high-oxygen deco at or above 6 m, it inserts a 5 min break on the back gas.
+7. **Final ascent** from the last stop (3 m or 6 m) to the surface at the final ascent rate (default 3 m/min).
+8. **NDL** is found by simulating extra bottom minutes until the ceiling at GF High would be below the surface. **TTS** is the time from leaving the bottom to the surface.
+
+A plan whose deco exceeds 3000 minutes, or with no breathable gas at some depth, is stopped and reported as a CRITICAL alert rather than shown as a valid plan.
+
+---
+
+### 6. VPM-B (experimental)
+
+**Theory.** The Varying Permeability Model (Yount and Hoffman [9]; VPM-B by Baker and Yount [10]) assumes that microscopic bubble nuclei with a critical radius always exist in the body, and limits decompression so that these nuclei do not grow past a critical volume. It typically gives deeper first stops than Bühlmann.
+
+**What the app actually does.** The app does **not** implement the full VPM-B algorithm (critical radius regeneration, the critical volume iteration and Boyle's-law compensation). It reuses the ZHL-16C tissues and multiplies each compartment's *a* coefficient by a factor between 0.62 and 0.92. That factor is derived from the critical radii (0.55 µm for nitrogen, 0.45 µm for helium) and your conservatism setting (0 to 5). This makes supersaturation limits stricter, the way VPM-B does, but **the schedules are not true VPM-B schedules**. Use Bühlmann with gradient factors for real planning; VPM-B is clearly marked experimental in the app.
+
+---
+
+### 7. Oxygen toxicity
+
+#### CNS (brain) toxicity: the "oxygen clock"
+
+**Theory.** High oxygen partial pressure can cause seizures without warning. NOAA publishes the maximum single-exposure time at each ppO2 [11]. The CNS % is the fraction of that allowed time already used, summed over the dive:
+
+```math
+CNS\% = \sum_{segments} \frac{t_{segment}}{T_{limit}(P_{O_2})} \times 100
+```
+
+| ppO2 (bar) | 0.6 | 0.7 | 0.8 | 0.9 | 1.0 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| NOAA limit (min) | 720 | 570 | 450 | 360 | 300 | 240 | 210 | 180 | 150 | 120 | 45 |
+
+- The app **interpolates linearly** between table points. Below 0.5 bar there is no CNS loading.
+- During ascents and descents the ppO2 changes, so the app integrates in steps of 10 seconds or less.
+- On the surface, CNS decays with a **90-minute half-time**, the convention used by most dive computers and planners:
+
+```math
+CNS(t) = CNS_0 \cdot 0.5^{\,t/90}
+```
+
+#### Pulmonary (lung) toxicity: OTU
+
+**Theory.** Long exposures above 0.5 bar irritate the lungs. Lambertsen's **Unit Pulmonary Toxicity Dose** [13] measures this dose; one OTU is one minute breathing 100% oxygen at 1 bar.
+
+```math
+OTU = t \cdot \left(\frac{P_{O_2} - 0.5}{0.5}\right)^{0.83}
+```
+
+During ascents and descents the app uses the exact integrated form for a linear ppO2 change (Baker [12]), and it only counts time spent above 0.5 bar. Daily totals are compared with the **REPEX** limits from the NOAA habitat-diving programme [14]: 850 OTU for a single day, falling to 700, 620, 525, 460 and 420 OTU/day for 2 to 6 consecutive days.
+
+---
+
+### 8. Narcosis: END and EAD
+
+**Theory.** Nitrogen (and, by most agencies' convention, oxygen) is narcotic under pressure; helium is not. The Equivalent Narcotic Depth is the air depth with the same narcotic pressure. With **O2 is narcotic** on (default, as most technical agencies teach):
+
+```math
+END = \text{depth where } P_{amb} = (f_{N_2} + f_{O_2})\cdot P_{amb}(d)
+```
+
+With it off, only nitrogen counts, and END becomes the **Equivalent Air Depth (EAD)**:
+
+```math
+EAD = \text{depth where } P_{amb} = \frac{f_{N_2} \cdot P_{amb}(d)}{0.7902}
+```
+
+Defaults: Max END 30 m, ppN2 max 3.95 bar at the bottom and 3.16 bar during deco. Alerts escalate to HIGH above 40 m END and CRITICAL above 45 m END.
+
+---
+
+### 9. Gas density and work of breathing
+
+**Theory.** Dense gas makes breathing harder. That increases CO2 retention (hypercapnia), which in turn increases narcosis, oxygen toxicity risk and the risk of losing control of a dive. Anthony and Mitchell [15], from rebreather test dives at the University of Auckland, recommended an **ideal maximum of 5.2 g/L** and a **hard maximum of 6.2 g/L**. Most agencies and dive computers have since adopted these limits.
+
+```math
+\rho_{gas} = \left(f_{O_2} \cdot 1.429 + f_{N_2} \cdot 1.2506 + f_{He} \cdot 0.1786\right) \cdot \frac{P_{amb}}{1.01325} \qquad [\text{g/L}]
+```
+
+The constants are the densities of the pure gases at 0 °C and 1 atm. Air in salt water:
+
+| Depth | 30 m | 39 m | 40 m | 45 m | 50 m | 55 m |
+|---|---|---|---|---|---|---|
+| Air density (g/L) | 5.14 | **6.30** | 6.42 | 7.07 | 7.71 | 8.35 |
+
+That is why the density-based agencies stop air around 30 to 39 m, and why helium is added in deeper mixes: TX 18/45 at 60 m is only 5.59 g/L.
+
+---
+
+### 10. Oxygen limits: MOD and minimum depth
+
+```math
+MOD = \text{depth where } P_{amb} = \frac{P_{O_2,max}}{f_{O_2}} \qquad d_{min} = \text{depth where } P_{amb} = \frac{P_{O_2,min}}{f_{O_2}}
+```
+
+Defaults: PPO2 Bottom 1.40 bar (working phase), PPO2 Deco 1.60 bar (resting deco), PPO2 Min 0.18 bar (hypoxia). Displayed MODs are rounded **down** and minimum depths **up**, so the rounding is always on the safe side.
+
+---
+
+### 11. Isobaric counterdiffusion (ICD)
+
+**Theory.** When a diver switches from a helium-rich gas to a nitrogen-rich gas, helium leaves some tissues more slowly than nitrogen enters. The total inert gas can rise and cause supersaturation **without any change in depth**. This was first described by Lambertsen and Idicula [20]. Doolette and Mitchell [21] showed that the **inner ear** is especially vulnerable, which explains the inner-ear DCS seen after deep trimix switches.
+
+The app checks every gas switch with two rules:
+
+```math
+\Delta P_{N_2} = (f_{N_2,new} - f_{N_2,old}) \cdot P_{amb} \le 0.5\ \text{bar} \qquad\qquad \Delta f_{N_2} \le \frac{\Delta f_{He}}{5}\ \ \text{(Rule of Fifths [22])}
+```
+
+Best GAS Mix also uses these rules when it designs deep deco stages, adding helium until the switch passes the ΔppN2 check.
+
+---
+
+### 12. How Best GAS Mix designs a mix
+
+For the "Optimized" method (other agencies are described in [Diving agency methods](#diving-agency-methods)):
+
+1. **Oxygen:** the highest fraction that keeps ppO2 within PPO2 Bottom at the maximum depth: f_O2 = PPO2_Bottom / P_amb(d_max).
+2. **Helium for narcosis:** the larger of the helium needed to bring END down to Max END and the helium needed to keep ppN2 under its limit. For END with O2 counted as narcotic:
+
+```math
+f_{He} \ge 1 - \frac{P_{amb}(END_{max})}{P_{amb}(d_{max})}
+```
+
+3. **Helium for density:** if the density is still above your limit, helium is raised 1% at a time until it is not.
+4. **Practical helium:** mixes with less than 10% helium are either made plain nitrox (if nitrox meets every limit) or raised to 10%, because small helium fractions are hard to blend accurately and give little benefit.
+5. **Deco gases:** EAN50 at 21 m and oxygen at 6 m, where both reach about 1.6 bar ppO2. This uses the **oxygen window** principle: the richer the deco gas, the lower the inspired inert gas pressure, so the larger the gradient that drives gas out of the tissues.
+6. **Deep dives** (deeper than 54 m on a helium bottom mix) get an intermediate trimix stage at 27 to 39 m, ICD-checked against the bottom gas.
+7. **Hypoxic bottom mixes** get a travel gas that is breathable from the surface down to the switch depth.
+
+---
+
+### 13. Gas planning
+
+**Volume** (Boyle's law, with Gay-Lussac's law for water temperature):
+
+```math
+V = RMV \cdot \frac{\bar P_{amb}}{P_{surf}} \cdot t \cdot \frac{293.15}{273.15 + T_{water}}
+```
+
+- P̄_amb is the average ambient pressure over the segment.
+- Bottom RMV (default 20 L/min) is used for the descent and bottom.
+- Deco RMV (default 15 L/min) is used for the stops and the ascent between stops.
+
+**Reserves:**
+
+| Rule | Reserve added | Origin |
+|---|---|---|
+| Thirds | Usable gas = 2/3, so reserve = 50% of planned use | Sheck Exley's cave diving rule [23] |
+| Quarters | Reserve = 1/3 of planned use | Conservative variant |
+| Half | Reserve = 100% of planned use | Very conservative |
+| Rock-Bottom | Two divers at stress RMV (bottom RMV × stress factor 1.5), 1 min to solve the problem at max depth, then ascent to the first gas switch | Technical agency practice (GUE / UTD) |
+| Deco 1.5× | Each deco gas carries 1.5 × its planned use | Common technical practice |
+| Lost gas | The dive is replanned with each deco gas lost in turn; each gas carries its worst-case need × stress factor | Contingency planning |
+
+**Turn pressure** is the cylinder pressure at which you have breathed half of the usable bottom gas (cylinder contents minus the reserve), so the other half plus the full reserve remains for the exit.
+
+---
+
+### 14. CCR bailout from the worst point
+
+**Theory.** A rebreather failure is most dangerous at the end of the bottom phase: deepest, longest, and with the most deco owed. The app therefore bails out at the end of **every** bottom level, starting from the exact tissue loading, CNS and OTU the loop has produced at that moment:
+
+1. 2 minutes of problem solving at depth on open circuit.
+2. An open circuit ascent on the bailout gases, at bottom and deco RMV × stress factor.
+3. The worst of all these scenarios is shown, and in Best GAS Mix every bailout cylinder is sized for it.
+
+The diluent is designed for ppO2 about 1.10 bar at the maximum depth. That way a diluent flush lowers the loop ppO2 below the 1.3 bar setpoint instead of raising it. See [CCR mode](#ccr-mode).
+
+---
+
+### 15. Repetitive dives and the Surface Interval Calculator
+
+**Theory.** After surfacing, tissues release their excess gas with the same Haldane kinetics, breathing air at surface pressure. Slow compartments take many hours, which is why the second dive of the day has shorter NDLs and more deco.
+
+- **Between dives:** tissues off-gas with the Haldane equation, and CNS decays with its 90 min half-time. OTU accumulates for the whole day.
+- **The calculator** always uses ZHL-16C. It reports:
+  - the remaining excess gas: the inert gas above surface equilibrium, summed over all compartments, as a % of the excess at surfacing;
+  - the leading compartment and the Surface GF;
+  - the NDL for the next dive, with and without your residual gas;
+  - the time until less than 10% of the excess remains.
+
+---
+
+### 16. Deep helium: HPNS
+
+**Theory.** High Pressure Nervous Syndrome (tremor, nausea and impaired coordination) appears on helium-rich gases at great depth, made worse by fast compression (Bennett and Rostain [18]). The app warns HIGH from 120 m with high helium or fast descent, and CRITICAL from 150 m.
+
+---
+
+### 17. Numerical precision
+
+- All calculations use 64-bit floating point.
+- Stops are solved to the second and then rounded up.
+- The CNS and OTU ramps are integrated in 10-second steps.
+- The engine is **deterministic**: the same inputs always give exactly the same plan, on Android and on iPhone. The two implementations are checked against each other on every build (see [Verification](#verification)).
 
 
 ---
@@ -419,7 +763,7 @@ A plan with any CRITICAL alert is marked as having errors. The plan is still sho
 | **Oxygen (ppO2)** | Above 1.60 bar: CRITICAL. Above your PPO2 Bottom or PPO2 Deco limit: HIGH. Gas switch too close to its MOD: MEDIUM |
 | **Hypoxia** | ppO2 below your PPO2 Min, or a hypoxic bottom mix with no travel gas that covers the surface: CRITICAL |
 | **MOD** | Gas used deeper than its 1.60 bar MOD: CRITICAL. Deeper than the MOD for your own limit: HIGH |
-| **Gas density** | Above 6.2 g/L: CRITICAL. Above your density limit (default 5.2 g/L): HIGH |
+| **Gas density** | Above 6.2 g/L: CRITICAL (HIGH for air within a deep-air agency's limit, see [Diving agency methods](#diving-agency-methods)). Above your density limit (default 5.2 g/L): HIGH |
 | **Narcosis (END / ppN2)** | END above 45 m: CRITICAL. Above 40 m: HIGH. Above your END limit: MEDIUM. Deco gas ppN2 above your PPN2 Max Deco: MEDIUM |
 | **CNS oxygen clock** | Above 100% (or your error limit): CRITICAL. Above 80% (or your warning limit): HIGH. 50% or more: LOW |
 | **OTU (lung oxygen dose)** | Above your per-dive limit, or more than 850 OTU in a day: HIGH. Daily total above your per-dive limit: MEDIUM |
@@ -437,6 +781,31 @@ A plan with any CRITICAL alert is marked as having errors. The plan is still sho
 | **Altitude** | Altitude dive with arrival under 12 hours ago: HIGH. Altitude dive (300 m or higher): MEDIUM |
 | **Settings** | GF Low higher than GF High: CRITICAL. Aggressive GF (GF High above 90): MEDIUM. Very conservative GF: LOW. Helium lipid response flag: LOW |
 | **Planning limits** | No breathable gas at some depth, or a deco obligation too large to plan: CRITICAL |
+
+### The science behind each rule
+
+| Rule | Theory | Why the threshold | Source |
+|---|---|---|---|
+| ppO2 above 1.6 bar | CNS oxygen toxicity (seizures) | 1.6 bar is the NOAA maximum, with only 45 min allowed per exposure | NOAA [11] |
+| ppO2 above 1.4 working / 1.6 deco | CNS toxicity rises with exertion and CO2 | 1.4 bar for the working phase and 1.6 bar for resting deco is the standard of all technical agencies | NOAA [11], agency standards |
+| ppO2 below 0.18 bar | Hypoxia, sudden loss of consciousness | 0.16 to 0.18 bar is the usual lower limit; 0.18 bar keeps a margin | Agency standards |
+| MOD exceeded | ppO2 = P_amb × f_O2 | A gas breathed below its MOD exceeds your ppO2 limit | Dalton's law |
+| Gas density above 5.2 / 6.2 g/L | Work of breathing, CO2 retention | 5.2 g/L ideal maximum and 6.2 g/L hard maximum from rebreather trials | Anthony & Mitchell [15] |
+| END above 30 / 40 / 45 m | Inert gas narcosis (Meyer-Overton) | 30 m END is the usual technical limit; narcosis impairs judgement sharply beyond 40 m | Agency practice [19] |
+| CNS above 80% / 100% | Cumulative oxygen exposure | 100% uses the whole NOAA allowance; 80% leaves room for a contingency | NOAA [11], Baker [12] |
+| OTU above 300 per dive or 850 per day | Pulmonary oxygen toxicity | REPEX daily limits | Lambertsen [13], Hamilton et al. [14] |
+| No air break after 20 min of high-ppO2 deco | Breaks lower the CNS risk on long oxygen stops | 20 min on, 5 min off is the common technical practice | Agency practice |
+| ICD ΔppN2 above 0.5 bar, Rule of Fifths | Isobaric counterdiffusion, inner-ear DCS | Limits taken from the ICD literature and Burton's rule | Lambertsen & Idicula [20], Doolette & Mitchell [21], Burton [22] |
+| Surface GF above 90% / 100% | Supersaturation at surfacing | 100% means the leading tissue surfaces at its raw Bühlmann M-value | Bühlmann [1], Baker [7] |
+| Not enough gas | Boyle's law gas planning | Planned use plus the reserve rule must fit in the cylinders | Exley [23], agency practice |
+| Ascent faster than 9 to 12 m/min | Fast ascents increase bubble formation | 9 to 10 m/min is the accepted standard ascent rate | Hamilton & Thalmann [3] |
+| HPNS from 120 / 150 m | Helium at high pressure, fast compression | Symptoms are documented from about 150 m, earlier with fast descents | Bennett & Rostain [18] |
+| CCR diluent ppO2 above 1.4 / 1.6 | A diluent flush must not create a high ppO2 | The diluent must be breathable at depth on its own | NOAA [11], CCR practice |
+| CCR bailout gas too small | Bailout from the worst point at stress RMV | The bailout must get the diver home from the deepest, latest point | Section 14 above |
+| Surface interval under 30 / 60 min, reverse profile | Residual gas and microbubbles from the previous dive | Short intervals leave fast and middle tissues loaded | Bühlmann [1] |
+| Altitude dive, arrival under 12 h | Tissues still carry the nitrogen of sea-level pressure | The 12-hour wait is the usual convention for altitude acclimatization; the app plans these dives with sea-level tissue loading | Bühlmann [2], agency practice |
+| Cold water, long exposure | Cold slows off-gassing and raises DCS risk | 10 °C and 90 min TTS are conservative planning flags chosen for this app | Hamilton & Thalmann [3] |
+| GF Low above GF High, GF High above 90 | Gradient Factors outside their meaning | GF Low > GF High is undefined; GF High > 90 leaves little margin at the surface | Baker [7] |
 
 ---
 
@@ -482,18 +851,18 @@ Before each new public build, raise `versionCode` and `versionName` in `app/buil
 
 ## Tech Stack
 
-| Layer | Choice |
-|---|---|
-| Language | Kotlin |
-| UI | Jetpack Compose, Material 3 |
-| Architecture | MVVM (ViewModel + StateFlow) |
-| Storage | Jetpack DataStore (settings, last plan, saved plans) |
-| Charts | Custom Compose Canvas charts |
-| Export | Android `PdfDocument` for PDF, CSV text, FileProvider for sharing |
-| Tests | JUnit 4, Robolectric |
-| Build | Gradle (Kotlin DSL), version catalog |
+| Layer | Android | iPhone |
+|---|---|---|
+| Language | Kotlin | Swift |
+| UI | Jetpack Compose, Material 3 | SwiftUI |
+| Architecture | MVVM (ViewModel + StateFlow) | ObservableObject store |
+| Storage | Jetpack DataStore | UserDefaults |
+| Charts | Custom Compose Canvas charts | Swift Charts |
+| Export | `PdfDocument` for PDF, CSV, FileProvider sharing | `UIGraphicsPDFRenderer`, CSV, share sheet |
+| Tests | JUnit 4, Robolectric | XCTest |
+| Build | Gradle (Kotlin DSL), GitHub Actions | Swift Package Manager, XcodeGen, GitHub Actions (macOS) |
 
-The decompression engine in `engine/` is plain Kotlin with no Android or UI code, so it can be tested on its own.
+On both platforms the decompression engine is plain code with no UI, so it can be tested on its own: `engine/` in Kotlin and the `DecoEngine` Swift package.
 
 ---
 
@@ -524,8 +893,14 @@ Extreme-DECO-Planner-Android-Mobile-APP/
 │       │   │       └── theme/                   Colours, typography, theme
 │       │   ├── res/                             Icons, fonts, images, strings
 │       │   └── AndroidManifest.xml
-│       ├── test/                                Unit tests (engine)
+│       ├── test/                                Unit tests (engine, parity fixtures)
 │       └── androidTest/                         Instrumented tests
+├── ios/
+│   ├── DecoEngine/                              Swift package: the engine, a line-by-line port of engine/
+│   │   ├── Sources/DecoEngine/                  Same files and function names as the Kotlin engine
+│   │   └── Tests/DecoEngineTests/               Engine, CCR, agency and parity tests (XCTest)
+│   └── ExtremeDecoPlanner/                      SwiftUI app (Settings, Planner, Gases, Charts), XcodeGen project
+├── .github/workflows/                           build-apk.yml and build-ios.yml (tests, build, publish)
 ├── public/assets/aistudio/                      Build specification
 ├── gradle/libs.versions.toml                    Dependency versions
 ├── build.gradle.kts
@@ -534,41 +909,72 @@ Extreme-DECO-Planner-Android-Mobile-APP/
 
 ---
 
-## Testing and Validation
+## Verification
 
-Run the unit tests from Android Studio: right-click `app/src/test` and choose **Run Tests**, or open the Gradle panel and run **app › Tasks › verification › test**.
+### Automated tests
 
-`DecompressionEngineTest.kt` covers:
+The engine is tested on every build, on both platforms. If a single test fails, no APK or .ipa is published.
 
-- Pressure and altitude, MOD, END and density
-- Haldane, Schreiner and the Gradient Factor formula
-- CNS and OTU
-- **Golden schedules** for four reference dives (40 m air at GF 20/80 and 100/100, 60 m on 18/45 at GF 30/70, 30 m air without deco gas)
-- Model conservatism (ZHL-16C at least as conservative as ZHL-16A) and GF monotonicity
-- Residual nitrogen across a multi-dive day
-- Best Gas Mix for every stage, and cylinder sizing from SAC rate
-- Recreational mode (under 40 m within NDL: EAN32, no trimix, no deco gases)
-- The four alert levels, including the CNS 80% single-dive warning and the new HIGH / MEDIUM checks
-- The ZHL-16C Surface Interval Calculator
-- One test per engine audit fix (CCR descent setpoint, next-dive gas, rock-bottom, lost-gas, travel gas display, Red Sea density, deco ppN2 alert, practical helium)
-- Diving agency methods: TDI / RAID / IANTD / PADI air limits, GUE / UTD standard gases, BSAC density, NAUI / SSI END, deep-air alert levels, every agency planning at every depth
-- CCR Best GAS Mix and bailout: diluent ppO2, bailout roles, bailout from the end of each level, cylinder sizing, insufficient-bailout and diluent-fallback alerts
-- Cross-platform parity: the iPhone engine must match the Android engine on 16 reference plans (including two CCR dives with their bailouts, a TDI deep-air dive and a GUE standard-gas dive), Best Mix for OC, CCR and seven agencies, and the SI calculator
+| Test suite | Android (Kotlin, JUnit) | iPhone (Swift, XCTest) | What it proves |
+|---|---|---|---|
+| Physics and model | `DecompressionEngineTest` | `EngineTests` | Pressure, altitude, MOD, END, density; Haldane, Schreiner and GF formulas; CNS and OTU |
+| Golden schedules | `DecompressionEngineTest` | `EngineTests` | Four reference dives must give fixed schedules: 40 m air at GF 20/80 and 100/100, 60 m on 18/45 at GF 30/70, 30 m air without deco gas |
+| Model behaviour | `DecompressionEngineTest` | `EngineTests` | ZHL-16C is at least as conservative as ZHL-16A, lower GF never shortens deco, residual gas carries across a dive day |
+| Gas selection | `DecompressionEngineTest`, `GasAgencyTest` | `EngineTests`, `GasAgencyTests` | Best Mix for every stage and every agency option, at every depth from 20 to 90 m |
+| CCR | `CcrBailoutTest` | `CcrBailoutTests` | Diluent ppO2, bailout from the end of every level, bailout cylinder sizing, bailout alerts |
+| Audit fixes | `AuditFixesTest`, `GasSufficiencyConsistencyTest` | `EngineTests` | One test for each engine issue found in the code audits |
+| **Cross-platform parity** | `ParityFixturesTest` | `ParityTests` | See below |
 
-Before relying on any change to the engine, compare the results with an established planner such as Subsurface or MultiDeco.
+In total there are 53 Android tests and 45 iPhone tests.
+
+### Two code bases that must agree
+
+The Android engine (Kotlin) and the iPhone engine (Swift) are written separately but must produce **identical** results. On every Android build, `ParityFixturesTest` plans 16 reference dives and prints a fingerprint of each. The fingerprint has the runtime, deco time, first stop, every stop (depth, time and gas), CNS, OTU, Surface GF, the gas volume of every cylinder, and every alert. The reference dives are:
+
+- OC air, nitrox and trimix dives from 30 to 82 m
+- multi-level and multi-dive days
+- altitude and fresh water
+- Rock-Bottom and Lost-Gas reserves
+- VPM-B
+- two CCR dives with their worst-case bailouts
+- a TDI deep-air dive and a GUE standard-gas dive
+
+The iPhone build replans the same dives and compares them field by field: runtime within 0.05 min, CNS within 0.1%, OTU within 0.2, gas within 2 L; stops and alerts must match exactly. Best Mix results for OC, CCR and seven agencies, and the Surface Interval Calculator, are compared the same way.
+
+Every engine change is made in both languages in the same commit. If a change is meant to alter results, the new Kotlin fingerprints are copied into the Swift references, so the change is visible and reviewed.
+
+### Running the tests yourself
+
+- **Android:** in Android Studio, right-click `app/src/test` and choose **Run Tests**, or run `./gradlew testDebugUnitTest`.
+- **iPhone engine:** on a Mac, run `swift test` in `ios/DecoEngine`.
+
+### Independent cross-checking
+
+Automated tests prove that the code does what the models say. They cannot prove that the models are safe for your body. Before relying on any plan, and before accepting any change to the engine, compare the results with an established planner such as **Subsurface** or **MultiDeco** using the same model, gradient factors and settings. Small differences (about a minute per stop) come from rounding and gas-switch handling; larger differences should be reported as an [issue](../../issues).
 
 ---
 
 ## Default Settings
 
-| Setting | Default |
-|---|---|
-| Deco model | ZHL-16C |
-| Gas mode | Best GAS Mix |
-| PPO2 bottom / deco / min | 1.40 / 1.60 / 0.18 bar |
-| Water | Salt (1030 kg/m³) |
-| Last stop | 3 m |
-| Units | Metric |
+| Setting | Default | Why |
+|---|---|---|
+| Deco model | ZHL-16C | The most conservative Bühlmann variant, used by dive computers |
+| Gradient Factors | 30 / 70 | A common technical starting point |
+| Gas mode / agency | Best GAS Mix, Optimized | Calculated from your limits |
+| PPO2 bottom / deco / min | 1.40 / 1.60 / 0.18 bar | Technical agency standards |
+| Max END / O2 narcotic | 30 m, yes | Technical agency standards |
+| Gas density limit | 5.2 g/L (hard maximum 6.2 g/L) | Anthony & Mitchell [15] |
+| ppN2 max bottom / deco | 3.95 / 3.16 bar | Narcosis and ICD margins |
+| Descent / ascent / deco ascent / final ascent | 20 / 9 / 9 / 3 m/min | Standard technical practice |
+| Stops | 3 m increments, last stop 3 m, minimum 1 min, 1 min gas switch | Standard technical practice |
+| Bottom / deco RMV, stress factor | 20 / 15 L/min, 1.5× | Typical technical diver values |
+| Reserve rules | Thirds (bottom), 1.5× (deco) | Rule of thirds [23] |
+| ICD | ΔppN2 ≤ 0.5 bar, Rule of Fifths on | ICD literature [20, 21, 22] |
+| CNS warning / error | 80% / 100% | NOAA [11] |
+| OTU warning | 300 per dive | REPEX [14] |
+| CCR setpoints | 0.7 descent, 1.3 bottom (from 20 m), 1.3 deco | Common CCR practice |
+| Water | Salt (1030 kg/m³) | |
+| Units | Metric | |
 
 All defaults can be changed in the **Settings** tab.
 
@@ -579,7 +985,10 @@ All defaults can be changed in the **Settings** tab.
 - **VPM-B is experimental and approximate.** It is not a full implementation of Baker's VPM-B algorithm. It reuses the ZHL-16C tissue model and makes the tolerated supersaturation stricter, scaled by the conservatism setting. Do not treat its schedules as true VPM-B schedules. Use the Bühlmann models for real dive planning.
 - **Surface Interval Calculator results are estimates.** The time-to-clear figure and the residual loads come from the ZHL-16C model only. Always follow your dive computer for repetitive dives.
 - Results can differ by about one minute per stop from other planners because of rounding and gas-switch handling.
-- The app has not yet been independently validated. Always cross-check with a second planner.
+- **Bühlmann is a dissolved-gas model.** It does not model bubbles directly. Gradient Factors are the accepted way to add bubble-related conservatism, but no setting makes a dive risk-free.
+- **The gas-density, END and ICD limits are research and agency guidelines,** not physiological guarantees. Individual factors (fitness, CO2 tolerance, PFO, dehydration, cold, exertion) are not modelled.
+- **CCR gas use is approximated** (fixed loop consumption of 0.8 L/min, 3.5 L/min on descent). Plan your onboard gas from your unit's real performance.
+- The app has not yet been independently validated against a large set of dive outcomes. Always cross-check with a second planner.
 
 ---
 
@@ -614,12 +1023,46 @@ Any change that alters a decompression result must include before-and-after sche
 
 ## References
 
-- A. A. Bühlmann, *Decompression: Decompression Sickness*, Springer
-- Erik C. Baker, *Understanding M-values* and *Clearing Up the Confusion About "Deep Stops"*
-- Erik C. Baker, *Oxygen Toxicity Calculations*
-- NOAA Diving Manual, oxygen exposure limits
-- Anthony and Mitchell, research on gas density limits in diving
-- Subsurface, open-source dive log and planner (used for cross-checking)
+**Decompression theory and models**
+
+1. Bühlmann AA. *Decompression: Decompression Sickness*. Springer-Verlag, Berlin, 1984.
+2. Bühlmann AA, Völlm EB, Nussberger P. *Tauchmedizin*, 5th edition. Springer, 2002. (ZHL-16 coefficients, mixed-gas and altitude procedures.)
+3. Hamilton RW, Thalmann ED. Decompression practice. In: Brubakk AO, Neuman TS, eds. *Bennett and Elliott's Physiology and Medicine of Diving*, 5th edition. Saunders, 2003.
+4. Boycott AE, Damant GCC, Haldane JS. The prevention of compressed-air illness. *Journal of Hygiene* 1908; 8(3): 342 to 443.
+5. Schreiner HR, Kelley PL. A pragmatic view of decompression. In: Lambertsen CJ, ed. *Underwater Physiology IV*. Academic Press, New York, 1971: 205 to 219.
+6. Workman RD. *Calculation of decompression schedules for nitrogen-oxygen and helium-oxygen dives*. US Navy Experimental Diving Unit, Research Report 6-65, 1965.
+7. Baker EC. Understanding M-values. *Immersed* 1998; 3(3).
+8. Baker EC. Clearing up the confusion about "deep stops". *Immersed* 1998.
+9. Yount DE, Hoffman DC. On the use of a bubble formation model to calculate diving tables. *Aviation, Space, and Environmental Medicine* 1986; 57(2): 149 to 156.
+10. Baker EC, Yount DE. VPM-B decompression program (VPMDECO), reference implementation of the Varying Permeability Model.
+
+**Oxygen**
+
+11. NOAA. *NOAA Diving Manual: Diving for Science and Technology*. Oxygen exposure limits for single exposures and 24 hours.
+12. Baker EC. *Oxygen Toxicity Calculations*. (CNS and OTU calculation for constant and changing ppO2.)
+13. Bardin H, Lambertsen CJ. *A quantitative method for calculating pulmonary oxygen toxicity: use of the Unit Pulmonary Toxicity Dose (UPTD)*. Institute for Environmental Medicine, University of Pennsylvania, 1970.
+14. Hamilton RW, Kenyon DJ, Peterson RE, Butler GJ, Beers DM. *REPEX: Development of repetitive excursions, surfacing techniques, and oxygen procedures for habitat diving*. NOAA National Undersea Research Program, Technical Report 88-1A, 1988.
+
+**Breathing gas, narcosis and counterdiffusion**
+
+15. Anthony G, Mitchell SJ. Respiratory physiology of rebreather diving. In: Pollock NW, Sellers SH, Godfrey JM, eds. *Rebreathers and Scientific Diving*. Proceedings of NPS/NOAA/DAN/AAUS Workshop, 2015. Durham, NC, 2016: 66 to 79.
+16. ISO 2533:1975. *Standard Atmosphere* (barometric formula for altitude).
+17. EN 13319:2000. *Diving accessories: depth gauges and combined depth and time measuring devices* (reference water density 1020 kg/m³).
+18. Bennett PB, Rostain JC. The high pressure nervous syndrome. In: Brubakk AO, Neuman TS, eds. *Bennett and Elliott's Physiology and Medicine of Diving*, 5th edition. Saunders, 2003.
+19. Alert Diver Europe. [Rapture of the tech depth: narcosis and training agencies](https://alertdiver.eu/en_US/articles/rapture-of-the-tech-depth-narcosis-and-training-agencies).
+20. Lambertsen CJ, Idicula J. A new gas lesion syndrome in man, induced by "isobaric gas counterdiffusion". *Journal of Applied Physiology* 1975; 39(3): 434 to 443.
+21. Doolette DJ, Mitchell SJ. Biophysical basis for inner ear decompression sickness. *Journal of Applied Physiology* 2003; 94: 2145 to 2150.
+22. Burton S. Isobaric counter diffusion (the Rule of Fifths). ScubaEngineer.
+
+**Gas planning and agency standards**
+
+23. Exley S. *Basic Cave Diving: A Blueprint for Survival*. NSS Cave Diving Section, 1979. (Rule of thirds.)
+24. Agency standards and guidance used for the [Diving agency methods](#diving-agency-methods): TDI, RAID, IANTD, PADI TecRec, GUE, UTD, BSAC, NAUI Tec, SSI (links in that section), and [DAN: gas density for divers](https://dan.org/alert-diver/article/performance-under-pressure/).
+
+**Planners for cross-checking**
+
+- [Subsurface](https://subsurface-divelog.org/), open-source dive log and planner (Bühlmann with GF, VPM-B)
+- [MultiDeco](https://www.hhssoftware.com/multideco/), commercial technical dive planner
 
 ---
 
