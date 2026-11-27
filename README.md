@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Extreme DECO Planner icon" width="120">
+  <img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Extreme DECO Planner icon" width="120">
 </p>
 
 <h1 align="center">Extreme DECO Planner</h1>
@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/planner-overview.jpg" alt="Planner" width="180">
-  <img src="docs/screenshots/planner-profile-chart.jpg" alt="Dive profile" width="180">
-  <img src="docs/screenshots/planner-alerts-1.jpg" alt="Safety alerts" width="180">
-  <img src="docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator" width="180">
+  <img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-overview.jpg" alt="Planner" width="180">
+  <img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-profile-chart.jpg" alt="Dive profile" width="180">
+  <img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-alerts.jpg" alt="Safety alerts" width="180">
+  <img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator" width="180">
 </p>
 
 <p align="center">
@@ -31,9 +31,9 @@
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
   <img alt="iOS" src="https://img.shields.io/badge/platform-iOS%2016%2B-000000?logo=apple&logoColor=white">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white">
-  <img alt="Model" src="https://img.shields.io/badge/model-B%C3%BChlmann%20ZHL--16%20%2B%20GF-0E7490">
-  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml"><img alt="Build APK" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml/badge.svg"></a>
-  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml"><img alt="Build iOS" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml/badge.svg"></a>
+  <img alt="Model" src="https://img.shields.io/badge/model-Buhlmann%20ZHL--16%20%2B%20GF-0E7490">
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml"><img alt="Build APK" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-apk.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml"><img alt="Build iOS" src="https://github.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/actions/workflows/build-ios.yml/badge.svg?branch=main"></a>
 </p>
 
 ---
@@ -201,58 +201,77 @@ See the [Screenshots](#screenshots) section for every screen.
 
 ## Screenshots
 
+Screenshots from the Android app, version 1.27.2. The iPhone app has the same four tabs and features.
+
 ### Planner
+
+Plan the dive, read the schedule, check the alerts.
 
 <table>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-overview.jpg" alt="Technical dive plan with Best GAS Mix" width="200"><br><sub>Technical dive plan with Best GAS Mix</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-best-gas-kit.jpg" alt="Recommended gas and cylinder kit" width="200"><br><sub>Recommended gas and cylinder kit</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-multi-dive-day.jpg" alt="Multi-dive day with surface intervals" width="200"><br><sub>Multi-dive day with surface intervals</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-overview.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-overview.jpg" alt="Technical dive plan with Best GAS Mix" width="190"></a><br><sub>Technical dive plan with Best GAS Mix</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-dive-levels.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-dive-levels.jpg" alt="Dive profile input and plan summary" width="190"></a><br><sub>Dive profile input and plan summary</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-profile-chart.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-profile-chart.jpg" alt="Dive profile chart with gas switches and TTS" width="190"></a><br><sub>Dive profile chart with gas switches and TTS</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-runtime-table.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-runtime-table.jpg" alt="Runtime and deco table" width="190"></a><br><sub>Runtime and deco table</sub></td>
   </tr>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-dive-levels.jpg" alt="Multi-level dive profile" width="200"><br><sub>Multi-level dive profile</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-profile-chart.jpg" alt="Dive profile chart with gas switches and TTS" width="200"><br><sub>Dive profile chart with gas switches and TTS</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator (ZHL-16C)" width="200"><br><sub>Surface Interval Calculator (ZHL-16C)</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-runtime-gases.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-runtime-gases.jpg" alt="Per segment: ppO2, END, density, ceiling" width="190"></a><br><sub>Per segment: ppO2, END, density, ceiling</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-best-gas-kit.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-best-gas-kit.jpg" alt="Best GAS Mix: trimix kit with deep deco stage (82 m)" width="190"></a><br><sub>Best GAS Mix: trimix kit with deep deco stage (82 m)</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-best-gas-tdi.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-best-gas-tdi.jpg" alt="Best GAS Mix, TDI method: air bottom gas" width="190"></a><br><sub>Best GAS Mix, TDI method: air bottom gas</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-alerts.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-alerts.jpg" alt="Safety alerts: Critical, High, Medium" width="190"></a><br><sub>Safety alerts: Critical, High, Medium</sub></td>
   </tr>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-alerts-1.jpg" alt="Safety alerts: CRITICAL and HIGH" width="200"><br><sub>Safety alerts: CRITICAL and HIGH</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/planner-alerts-2.jpg" alt="Safety alerts: MEDIUM and LOW" width="200"><br><sub>Safety alerts: MEDIUM and LOW</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-surface-interval.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-surface-interval.jpg" alt="Surface Interval Calculator (ZHL-16C)" width="190"></a><br><sub>Surface Interval Calculator (ZHL-16C)</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-offgassing.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-offgassing.jpg" alt="Surface off-gassing of C1 to C16" width="190"></a><br><sub>Surface off-gassing of C1 to C16</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-contingency-export.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/planner-contingency-export.jpg" alt="Contingency plans and PDF / CSV export" width="190"></a><br><sub>Contingency plans and PDF / CSV export</sub></td>
   </tr>
 </table>
 
 ### Gases
 
+Every cylinder with its MOD, minimum depth, END and density.
+
 <table>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/gases-kit.jpg" alt="Best GAS Mix cylinder kit" width="200"><br><sub>Best GAS Mix cylinder kit</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/gases-editor.jpg" alt="Gas and cylinder editor with MOD, END and density" width="200"><br><sub>Gas and cylinder editor with MOD, END and density</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-kit.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-kit.jpg" alt="Gas blending and cylinder kit" width="190"></a><br><sub>Gas blending and cylinder kit</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-editor.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-editor.jpg" alt="Travel / bottom gas editor" width="190"></a><br><sub>Travel / bottom gas editor</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-deco-bailout.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-deco-bailout.jpg" alt="Deep deco / bailout stage" width="190"></a><br><sub>Deep deco / bailout stage</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-deco-editor.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/gases-deco-editor.jpg" alt="EAN50 and oxygen deco cylinders" width="190"></a><br><sub>EAN50 and oxygen deco cylinders</sub></td>
   </tr>
 </table>
 
 ### Charts
 
+Tissue loading, partial pressures, M-value envelope and gas use.
+
 <table>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/charts-overview.jpg" alt="Decompression and tissue charts" width="200"><br><sub>Decompression and tissue charts</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/charts-16-compartments.jpg" alt="16-compartment tissue loading" width="200"><br><sub>16-compartment tissue loading</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/charts-tension-timeline.jpg" alt="Inert gas tension timeline" width="200"><br><sub>Inert gas tension timeline</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-overview.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-overview.jpg" alt="Decompression and tissue charts" width="190"></a><br><sub>Decompression and tissue charts</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-16-compartments.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-16-compartments.jpg" alt="16-compartment tissue loading and saturation" width="190"></a><br><sub>16-compartment tissue loading and saturation</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-partial-pressures.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-partial-pressures.jpg" alt="Gas partial pressures (ppO2, ppN2, ppHe)" width="190"></a><br><sub>Gas partial pressures (ppO2, ppN2, ppHe)</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-tension-timeline.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-tension-timeline.jpg" alt="Inert gas tension timeline, C1 to C16" width="190"></a><br><sub>Inert gas tension timeline, C1 to C16</sub></td>
   </tr>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/charts-gas-consumption.jpg" alt="Gas consumption vs cylinder capacity" width="200"><br><sub>Gas consumption vs cylinder capacity</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-gas-consumption.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/charts-gas-consumption.jpg" alt="Gas consumption vs cylinder capacity" width="190"></a><br><sub>Gas consumption vs cylinder capacity</sub></td>
   </tr>
 </table>
 
 ### Settings
 
+Model, diving agency, limits, rates, reserves and alert thresholds.
+
 <table>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/settings-general.jpg" alt="Planning type and units" width="200"><br><sub>Planning type and units</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/settings-model-gf.jpg" alt="Deco model and gradient factors" width="200"><br><sub>Deco model and gradient factors</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/settings-limits.jpg" alt="ppO2, ppN2 and END limits" width="200"><br><sub>ppO2, ppN2 and END limits</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-overview.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-overview.jpg" alt="Dive computer and model settings" width="190"></a><br><sub>Dive computer and model settings</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-general.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-general.jpg" alt="Planning type, units and deco model" width="190"></a><br><sub>Planning type, units and deco model</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-model-gf.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-model-gf.jpg" alt="Diving agency, gradient factors and water" width="190"></a><br><sub>Diving agency, gradient factors and water</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-limits.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-limits.jpg" alt="ppO2, ppN2 and END limits" width="190"></a><br><sub>ppO2, ppN2 and END limits</sub></td>
   </tr>
   <tr>
-    <td align="center" valign="top"><img src="docs/screenshots/settings-rates.jpg" alt="Density, rates and stops" width="200"><br><sub>Density, rates and stops</sub></td>
-    <td align="center" valign="top"><img src="docs/screenshots/settings-gas-reserve.jpg" alt="Gas consumption and reserve rules" width="200"><br><sub>Gas consumption and reserve rules</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-rates.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-rates.jpg" alt="Gas density, rates and stops" width="190"></a><br><sub>Gas density, rates and stops</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-gas-reserve.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-gas-reserve.jpg" alt="Gas consumption and reserve rules" width="190"></a><br><sub>Gas consumption and reserve rules</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-icd-budgets.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-icd-budgets.jpg" alt="ICD rules and gas budget alerts" width="190"></a><br><sub>ICD rules and gas budget alerts</sub></td>
+    <td align="center" valign="top" width="25%"><a href="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-alert-thresholds.jpg"><img src="https://raw.githubusercontent.com/RamyRedaM/Extreme-DECO-Planner-Android-Mobile-APP/main/docs/screenshots/settings-alert-thresholds.jpg" alt="CNS and OTU alert thresholds" width="190"></a><br><sub>CNS and OTU alert thresholds</sub></td>
   </tr>
 </table>
 
